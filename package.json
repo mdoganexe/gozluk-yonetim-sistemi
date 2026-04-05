@@ -1,0 +1,38 @@
+{
+  "name": "gozluk-yonetim-sistemi",
+  "version": "1.0.0",
+  "description": "Profesyonel Gözlük Satış ve Stok Yönetim Sistemi",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "vite build && echo 'Build completed. Ready for deployment.'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/[kullanici-adi]/gozluk-yonetim-sistemi.git"
+  },
+  "keywords": ["gozluk", "optik", "yonetim", "stok", "satis"],
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "dexie": "^3.2.4",
+    "dexie-react-hooks": "^1.1.7",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.0",
+    "lucide-react": "^0.344.0",
+    "date-fns": "^3.3.1",
+    "recharts": "^2.12.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "vite": "^5.1.0"
+  }
+}

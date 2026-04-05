@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veritabanı Sıfırlama - OptikPro</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #0ea5e9;
+      margin-top: 0;
+    }
+    .warning {
+      background: #fef3c7;
+      border: 2px solid #f59e0b;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+    button {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #dc2626;
+    }
+    .secondary {
+      background: #6b7280;
+    }
+    .secondary:hover {
+      background: #4b5563;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 5px;
+      display: none;
+    }
+    .success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🗄️ Veritabanı Sıfırlama</h1>
+    
+    <p>Bu sayfa, tarayıcınızdaki OptikPro veritabanını tamamen siler.</p>
+    
+    <div class="warning">
+      <strong>⚠️ UYARI:</strong> Bu işlem geri alınamaz! Tüm verileriniz silinecektir.
+      <br><br>
+      <strong>Devam etmeden önce:</strong>
+      <ul>
+        <li>Verilerinizi yedekleyin (Ayarlar → Verileri Dışa Aktar)</li>
+        <li>Bu işlemin gerekli olduğundan emin olun</li>
+      </ul>
+    </div>
+
+    <h3>Ne zaman kullanılır?</h3>
+    <ul>
+      <li>Veritabanı şeması güncellendiğinde</li>
+      <li>"Object store not found" hatası alındığında</li>
+      <li>Veritabanı bozulduğunda</li>
+      <li>Temiz bir başlangıç yapmak istediğinizde</li>
+    </ul>
+
+    <div style="margin-top: 30px;">
+      <button onclick="resetDB()">🗑️ Veritabanını Sıfırla</button>
+      <button class="secondary" onclick="goBack()">← Geri Dön</button>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <script type="module">
+    window.resetDB = async function() {
+      if (!confirm('TÜM VERİLER SİLİNECEK! Emin misiniz?')) {
+        return;
+      }
+
+      const status = document.getElementById('status');
+      status.style.display = 'block';
+      status.className = '';
+      status.textContent = 'Veritabanı siliniyor...';
+
+      try {
+        // IndexedDB'yi sil
+        const dbName = 'GozlukYonetimDB';
+        const deleteRequest = indexedDB.deleteDatabase(dbName);
+        
+        deleteRequest.onsuccess = function() {
+          status.className = 'success';
+          status.textContent = '✅ Veritabanı başarıyla silindi! 3 saniye içinde ana sayfaya yönlendirileceksiniz...';
+          
+          // localStorage'ı da temizle
+          localStorage.clear();
+          
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 3000);
+        };
+
+        deleteRequest.onerror = function() {
+          status.className = 'error';
+          status.textContent = '❌ Hata: Veritabanı silinemedi. Tarayıcı konsolunu kontrol edin.';
+        };
+
+        deleteRequest.onblocked = function() {
+          status.className = 'error';
+          status.textContent = '⚠️ Veritabanı kullanımda. Lütfen tüm OptikPro sekmelerini kapatıp tekrar deneyin.';
+        };
+      } catch (error) {
+        status.className = 'error';
+        status.textContent = '❌ Hata: ' + error.message;
+      }
+    };
+
+    window.goBack = function() {
+      window.location.href = '/';
+    };
+  </script>
+</body>
+</html>
