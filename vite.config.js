@@ -5,5 +5,18 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000
+  },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'chart-vendor': ['recharts'],
+          'db-vendor': ['dexie', 'dexie-react-hooks'],
+          'icons-vendor': ['lucide-react']
+        }
+      }
+    }
   }
 })
