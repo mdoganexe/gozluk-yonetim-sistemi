@@ -7,9 +7,12 @@ import ProductModal from '../../components/ProductModal';
 import BarcodeScanner from '../../components/BarcodeScanner';
 import QRCodeLabel from '../../components/QRCodeLabel';
 import { findProductByCode } from '../../utils/productCode';
+import { useImageViewer } from '../../components/ImageViewer';
+import { Image as ImageIcon } from 'lucide-react';
 
 export default function ProductList() {
   const navigate = useNavigate();
+  const { openImages } = useImageViewer();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
@@ -125,11 +128,22 @@ export default function ProductList() {
                 return (
                   <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4">
-                      <div>
-                        <div className="font-medium">{product.marka} {product.model}</div>
-                        {product.renk && (
-                          <div className="text-sm text-gray-600">{product.renk}</div>
+                      <div className="flex items-center gap-3">
+                        {product.gorseller?.length > 0 ? (
+                          <img src={product.gorseller[0].dataUrl} alt=""
+                            onClick={() => openImages(product.gorseller, 0)}
+                            className="w-12 h-12 object-cover rounded-lg border border-gray-200 cursor-zoom-in flex-shrink-0" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            <ImageIcon className="w-5 h-5 text-gray-300" />
+                          </div>
                         )}
+                        <div>
+                          <div className="font-medium">{product.marka} {product.model}</div>
+                          {product.renk && (
+                            <div className="text-sm text-gray-600">{product.renk}</div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="py-3 px-4">

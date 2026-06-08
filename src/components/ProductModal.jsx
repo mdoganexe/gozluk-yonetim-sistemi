@@ -1,12 +1,17 @@
 import { useState } from 'react';
-import { X, Sparkles, ScanLine } from 'lucide-react';
+import { X, Sparkles, ScanLine, Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
 import db from '../db/database';
 import { generateBarcode } from '../utils/productCode';
+import { filesToImages } from '../utils/image';
 import BarcodeScanner from './BarcodeScanner';
+import { useImageViewer } from './ImageViewer';
 import { brandsForCategory, modelsForBrand } from '../data/eyewearBrands';
 
 export default function ProductModal({ product, onClose, onSave }) {
+  const { openImages } = useImageViewer();
   const [scanning, setScanning] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [gorseller, setGorseller] = useState(product?.gorseller || []);
   const [formData, setFormData] = useState({
     barkod: product?.barkod || '',
     sku: product?.sku || '',
@@ -30,6 +35,23 @@ export default function ProductModal({ product, onClose, onSave }) {
     notlar: product?.notlar || ''
   });
 
+  const handleImageUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const yeni = await filesToImages(files, 1000, 0.75);
+      setGorseller(prev => [...prev, ...yeni]);
+    } catch {
+      alert('Görsel yüklenemedi');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeImage = (idx) => setGorseller(prev => prev.filter((_, i) => i !== idx));
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -47,6 +69,7 @@ export default function ProductModal({ product, onClose, onSave }) {
       // Sayısal alanları string olarak kaydetme (stok hesaplamaları bozulmasın)
       const payload = {
         ...formData,
+        gorseller,
         alis_fiyati: parseFloat(formData.alis_fiyati) || 0,
         satis_fiyati: parseFloat(formData.satis_fiyati) || 0,
         kdv_orani: parseFloat(formData.kdv_orani) || 0,
@@ -309,6 +332,40 @@ export default function ProductModal({ product, onClose, onSave }) {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Ürün Fotoğrafları */}
+          <div className="border-t pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-gray-600" /> Ürün Fotoğrafları
+              </h3>
+              <label className="btn-secondary text-sm flex items-center gap-2 cursor-pointer">
+                <Upload className="w-4 h-4" />
+                {uploading ? 'Yükleniyor...' : 'Fotoğraf Ekle'}
+                <input type="file" accept="image/*" multiple capture="environment"
+                  onChange={handleImageUpload} disabled={uploading} className="hidden" />
+              </label>
+            </div>
+            {gorseller.length > 0 ? (
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                {gorseller.map((g, idx) => (
+                  <div key={idx} className="relative group">
+                    <img src={g.dataUrl} alt={g.name || ''}
+                      onClick={() => openImages(gorseller, idx)}
+                      className="w-full h-24 object-cover rounded-lg border border-gray-200 cursor-zoom-in" />
+                    <button type="button" onClick={() => removeImage(idx)}
+                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 text-center py-4">
+                Henüz fotoğraf yok. Telefondan çekebilir veya bilgisayardan ekleyebilirsiniz.
+              </p>
+            )}
           </div>
 
           {/* Notlar */}

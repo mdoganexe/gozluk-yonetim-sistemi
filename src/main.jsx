@@ -5,6 +5,7 @@ import './index.css'
 import { initTheme } from './utils/theme'
 import { initDB } from './db/database'
 import { createDefaultAdmin } from './utils/auth'
+import { ImageViewerProvider } from './components/ImageViewer'
 
 initTheme()
 
@@ -37,7 +38,9 @@ initDB()
     try { await createDefaultAdmin(); } catch (e) { /* yarış durumu - sorun değil */ }
     root.render(
       <React.StrictMode>
-        <App />
+        <ImageViewerProvider>
+          <App />
+        </ImageViewerProvider>
       </React.StrictMode>
     )
   })

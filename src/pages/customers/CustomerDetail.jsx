@@ -6,10 +6,12 @@ import db from '../../db/database';
 import CustomerModal from '../../components/CustomerModal';
 import PrescriptionModal from '../../components/PrescriptionModal';
 import AppointmentModal from '../../components/AppointmentModal';
+import { useImageViewer } from '../../components/ImageViewer';
 
 export default function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { openImages } = useImageViewer();
   const [searchParams] = useSearchParams();
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
@@ -328,9 +330,9 @@ export default function CustomerDetail() {
                     {prescription.gorseller?.length > 0 && (
                       <div className="mt-3 flex gap-2 flex-wrap">
                         {prescription.gorseller.map((g, idx) => (
-                          <a key={idx} href={g.dataUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-                            <img src={g.dataUrl} alt={g.name} className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
-                          </a>
+                          <img key={idx} src={g.dataUrl} alt={g.name}
+                            onClick={(e) => { e.stopPropagation(); openImages(prescription.gorseller, idx); }}
+                            className="w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-zoom-in" />
                         ))}
                       </div>
                     )}

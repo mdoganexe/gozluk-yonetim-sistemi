@@ -6,6 +6,7 @@ import db from '../../db/database';
 import PaymentModal from '../../components/PaymentModal';
 import { restoreStockForOrder } from '../../utils/stockManager';
 import { groupOrderItems, kalemLabel, prescriptionOf } from '../../utils/orderHelpers';
+import { useImageViewer } from '../../components/ImageViewer';
 
 const statusColors = {
   taslak: 'bg-gray-100 text-gray-700',
@@ -30,6 +31,7 @@ const tl = (v) => `₺${(v || 0).toLocaleString('tr-TR', { minimumFractionDigits
 export default function OrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { openImages } = useImageViewer();
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [settings, setSettings] = useState({
     companyName: 'OptikPro',
@@ -307,9 +309,8 @@ export default function OrderDetail() {
             {prescription.gorseller?.length > 0 && (
               <div className="mt-3 flex gap-2 flex-wrap">
                 {prescription.gorseller.map((g, i) => (
-                  <a key={i} href={g.dataUrl} target="_blank" rel="noreferrer">
-                    <img src={g.dataUrl} alt={g.name} className="w-20 h-20 object-cover rounded border border-gray-200" />
-                  </a>
+                  <img key={i} src={g.dataUrl} alt={g.name} onClick={() => openImages(prescription.gorseller, i)}
+                    className="w-20 h-20 object-cover rounded border border-gray-200 cursor-zoom-in" />
                 ))}
               </div>
             )}

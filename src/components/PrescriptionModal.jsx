@@ -2,34 +2,11 @@ import { useState } from 'react';
 import { X, Upload, Image as ImageIcon, Trash2, Eye, Glasses } from 'lucide-react';
 import db from '../db/database';
 import { CONTACT_LENS_BRANDS } from '../data/eyewearBrands';
-
-// Görseli tarayıcıda küçültüp base64 (JPEG) döndürür — IndexedDB şişmesin
-const fileToCompressedDataUrl = (file, maxSize = 1400, quality = 0.8) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > maxSize || height > maxSize) {
-          const ratio = Math.min(maxSize / width, maxSize / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+import { fileToCompressedDataUrl } from '../utils/image';
+import { useImageViewer } from './ImageViewer';
 
 export default function PrescriptionModal({ customerId, prescription, initialType, onClose, onSave }) {
+  const { openImages } = useImageViewer();
   const [tip, setTip] = useState(prescription?.recete_tipi || initialType || 'optik');
   const [uploading, setUploading] = useState(false);
   const [gorseller, setGorseller] = useState(prescription?.gorseller || []);
@@ -248,9 +225,8 @@ export default function PrescriptionModal({ customerId, prescription, initialTyp
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                 {gorseller.map((g, idx) => (
                   <div key={idx} className="relative group">
-                    <a href={g.dataUrl} target="_blank" rel="noreferrer">
-                      <img src={g.dataUrl} alt={g.name} className="w-full h-24 object-cover rounded-lg border border-gray-200" />
-                    </a>
+                    <img src={g.dataUrl} alt={g.name} onClick={() => openImages(gorseller, idx)}
+                      className="w-full h-24 object-cover rounded-lg border border-gray-200 cursor-zoom-in" />
                     <button type="button" onClick={() => removeImage(idx)}
                       className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                       <Trash2 className="w-3.5 h-3.5" />

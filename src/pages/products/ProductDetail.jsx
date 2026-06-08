@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, Edit, Package, QrCode } from 'lucide-react';
+import { ArrowLeft, Edit, Package, QrCode, Image as ImageIcon } from 'lucide-react';
 import db from '../../db/database';
 import ProductModal from '../../components/ProductModal';
 import QRCodeLabel from '../../components/QRCodeLabel';
+import { useImageViewer } from '../../components/ImageViewer';
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { openImages } = useImageViewer();
   const [showModal, setShowModal] = useState(false);
   const [showLabel, setShowLabel] = useState(false);
 
@@ -135,6 +137,22 @@ export default function ProductDetail() {
         </div>
 
         <div className="space-y-6">
+          {/* Fotoğraflar */}
+          {product.gorseller?.length > 0 && (
+            <div className="card">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <ImageIcon className="w-6 h-6" /> Fotoğraflar
+              </h2>
+              <div className="grid grid-cols-3 gap-2">
+                {product.gorseller.map((g, i) => (
+                  <img key={i} src={g.dataUrl} alt=""
+                    onClick={() => openImages(product.gorseller, i)}
+                    className="w-full h-20 object-cover rounded-lg border border-gray-200 cursor-zoom-in" />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Stock Card */}
           <div className="card">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
