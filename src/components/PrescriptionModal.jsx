@@ -79,9 +79,11 @@ export default function PrescriptionModal({ customerId, prescription, initialTyp
 
   const isLens = tip === 'lens';
 
-  // Bir göz için alan grubu render eder
+  // Bir göz için alan grubu render eder.
+  // NOT: JSX <EyeFields/> olarak DEĞİL, {EyeFields({...})} olarak çağrılır;
+  // aksi halde her tuş vuruşunda remount olup input odağı kaybeder.
   const EyeFields = ({ side, label, color }) => (
-    <div className={`border-2 ${color} rounded-lg p-4`}>
+    <div key={side} className={`border-2 ${color} rounded-lg p-4`}>
       <h3 className="font-semibold text-lg mb-3">{label}</h3>
       <div className={`grid ${isLens ? 'grid-cols-5' : 'grid-cols-4'} gap-3`}>
         <div>
@@ -184,8 +186,8 @@ export default function PrescriptionModal({ customerId, prescription, initialTyp
             )}
           </div>
 
-          <EyeFields side="sag" label="SAĞ GÖZ" color="border-blue-200" />
-          <EyeFields side="sol" label="SOL GÖZ" color="border-green-200" />
+          {EyeFields({ side: 'sag', label: 'SAĞ GÖZ', color: 'border-blue-200' })}
+          {EyeFields({ side: 'sol', label: 'SOL GÖZ', color: 'border-green-200' })}
 
           {/* PD - sadece optik */}
           {!isLens && (

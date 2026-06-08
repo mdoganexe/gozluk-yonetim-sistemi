@@ -90,8 +90,11 @@ export default function ProductList() {
           />
         </div>
         
-        <div className="flex gap-2">
-          {['all', 'çerçeve', 'güneşlik', 'aksesuar', 'cam_stok'].map(cat => (
+        <div className="flex gap-2 flex-wrap">
+          {[
+            ['all', 'Tümü'], ['çerçeve', 'Çerçeve'], ['güneşlik', 'Güneş Gözlüğü'],
+            ['aksesuar', 'Aksesuar'], ['cam_stok', 'Optik (Cam)']
+          ].map(([cat, label]) => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
@@ -101,7 +104,7 @@ export default function ProductList() {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              {cat === 'all' ? 'Tümü' : cat.charAt(0).toUpperCase() + cat.slice(1).replace('_', ' ')}
+              {label}
             </button>
           ))}
         </div>

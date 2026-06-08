@@ -185,9 +185,9 @@ export default function ProductModal({ product, onClose, onSave }) {
                   className="input"
                 >
                   <option value="çerçeve">Çerçeve</option>
-                  <option value="güneşlik">Güneşlik</option>
+                  <option value="güneşlik">Güneş Gözlüğü</option>
                   <option value="aksesuar">Aksesuar</option>
-                  <option value="cam_stok">Cam (Stok)</option>
+                  <option value="cam_stok">Optik (Cam)</option>
                 </select>
               </div>
               <div>

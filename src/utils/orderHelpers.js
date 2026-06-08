@@ -27,6 +27,7 @@ export const kalemLabel = (tip) => ({
   cam_sag: 'Cam (Sağ)',
   cam_sol: 'Cam (Sol)',
   cam: 'Cam',
+  'güneş': 'Güneş Gözlüğü',
   aksesuar: 'Aksesuar',
   'işçilik': 'İşçilik'
 }[tip] || tip);

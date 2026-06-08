@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, Plus, Trash2, User, Glasses, AlertTriangle, Eye, Wrench, Package } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, User, Glasses, AlertTriangle, Eye, Wrench, Package, Sun } from 'lucide-react';
 import db, { generateFisNo } from '../../db/database';
 import { decreaseStockForOrder, checkStockAvailability } from '../../utils/stockManager';
 import { useSettings } from '../../utils/useSettings';
@@ -52,6 +52,9 @@ export default function OrderNew() {
   );
   const accessoryProducts = (products || []).filter(p =>
     (p.kategori === 'aksesuar' || p.kategori === 'cam_stok') && (p.aktif === undefined || p.aktif === true)
+  );
+  const sunglassProducts = (products || []).filter(p =>
+    p.kategori === 'güneşlik' && (p.aktif === undefined || p.aktif === true)
   );
 
   // KDV varsayılanı ayardan
@@ -266,14 +269,14 @@ export default function OrderNew() {
     const isFrame = item.kalem_tipi === 'çerçeve';
     const isCam = item.kalem_tipi.startsWith('cam');
     const isAccessory = item.kalem_tipi === 'aksesuar';
-    const isLabor = item.kalem_tipi === 'işçilik';
+    const isSun = item.kalem_tipi === 'güneş';
 
     return (
       <div key={item.id} className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
         <div className="grid grid-cols-12 gap-3 items-start">
           <div className="col-span-12 md:col-span-4">
             <label className="label">
-              {isFrame ? 'Çerçeve' : isCam ? camTipiLabel[item.kalem_tipi] || 'Cam' : isAccessory ? 'Aksesuar' : 'İşçilik / Açıklama'}
+              {isFrame ? 'Çerçeve' : isSun ? 'Güneş Gözlüğü' : isCam ? camTipiLabel[item.kalem_tipi] || 'Cam' : isAccessory ? 'Aksesuar' : 'İşçilik / Açıklama'}
             </label>
             {isFrame ? (
               <ProductPicker
@@ -281,6 +284,13 @@ export default function OrderNew() {
                 value={item.urun_id}
                 onSelect={(p) => selectFrame(item, p)}
                 placeholder="🔍 Çerçeve ara/seç…"
+              />
+            ) : isSun ? (
+              <ProductPicker
+                products={sunglassProducts}
+                value={item.urun_id}
+                onSelect={(p) => selectFrame(item, p)}
+                placeholder="🔍 Güneş gözlüğü ara/seç…"
               />
             ) : isAccessory ? (
               <ProductPicker
@@ -434,6 +444,9 @@ export default function OrderNew() {
             <div className="flex gap-2 flex-wrap">
               <button type="button" onClick={addGozlukGroup} className="btn-primary text-sm flex items-center gap-1">
                 <Glasses className="w-4 h-4" /> + Yeni Gözlük (Çerçeve+Cam)
+              </button>
+              <button type="button" onClick={() => addStandalone('güneş')} className="btn-secondary text-sm flex items-center gap-1">
+                <Sun className="w-4 h-4" /> + Güneş Gözlüğü
               </button>
               <button type="button" onClick={() => addStandalone('cam')} className="btn-secondary text-sm flex items-center gap-1">
                 <Eye className="w-4 h-4" /> + Tekil Cam

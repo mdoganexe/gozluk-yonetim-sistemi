@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate } from 'react-router-dom';
 import {
   X, ArrowLeft, ArrowRight, Check, User, Glasses, Eye, Wrench, Package,
-  Plus, Trash2, CreditCard, CheckCircle2, FileText
+  Plus, Trash2, CreditCard, CheckCircle2, FileText, Sun
 } from 'lucide-react';
 import db, { generateFisNo } from '../db/database';
 import { decreaseStockForOrder, checkStockAvailability } from '../utils/stockManager';
@@ -70,6 +70,8 @@ export default function SaleWizard({ onClose }) {
     (p.kategori === 'çerçeve' || p.kategori === 'güneşlik') && (p.aktif === undefined || p.aktif === true));
   const accessoryProducts = (products || []).filter(p =>
     (p.kategori === 'aksesuar' || p.kategori === 'cam_stok') && (p.aktif === undefined || p.aktif === true));
+  const sunglassProducts = (products || []).filter(p =>
+    p.kategori === 'güneşlik' && (p.aktif === undefined || p.aktif === true));
 
   const addGozlukGroup = () => {
     const g = uid();
@@ -267,14 +269,17 @@ export default function SaleWizard({ onClose }) {
     const isFrame = item.kalem_tipi === 'çerçeve';
     const isCam = item.kalem_tipi.startsWith('cam');
     const isAcc = item.kalem_tipi === 'aksesuar';
+    const isSun = item.kalem_tipi === 'güneş';
     const camLbl = { cam_sag: 'Cam (Sağ)', cam_sol: 'Cam (Sol)', cam: 'Cam' }[item.kalem_tipi] || 'Cam';
     return (
       <div key={item.id} className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
         <div className="grid grid-cols-12 gap-2 items-start">
           <div className="col-span-12 md:col-span-4">
-            <label className="label">{isFrame ? 'Çerçeve' : isCam ? camLbl : isAcc ? 'Aksesuar' : 'İşçilik'}</label>
+            <label className="label">{isFrame ? 'Çerçeve' : isSun ? 'Güneş Gözlüğü' : isCam ? camLbl : isAcc ? 'Aksesuar' : 'İşçilik'}</label>
             {isFrame ? (
               <ProductPicker products={frameProducts} value={item.urun_id} onSelect={(p) => selectFrame(item, p)} placeholder="🔍 Çerçeve ara/seç…" />
+            ) : isSun ? (
+              <ProductPicker products={sunglassProducts} value={item.urun_id} onSelect={(p) => selectFrame(item, p)} placeholder="🔍 Güneş gözlüğü ara/seç…" />
             ) : isAcc ? (
               <ProductPicker products={accessoryProducts} value={item.urun_id} onSelect={(p) => selectFrame(item, p)} placeholder="🔍 Aksesuar ara/seç…" />
             ) : (
@@ -468,6 +473,7 @@ export default function SaleWizard({ onClose }) {
                     <h3 className="text-lg font-semibold">Sipariş Kalemleri</h3>
                     <div className="flex gap-2 flex-wrap">
                       <button type="button" onClick={addGozlukGroup} className="btn-primary text-sm flex items-center gap-1"><Glasses className="w-4 h-4" /> + Yeni Gözlük</button>
+                      <button type="button" onClick={() => addStandalone('güneş')} className="btn-secondary text-sm flex items-center gap-1"><Sun className="w-4 h-4" /> + Güneş Gözlüğü</button>
                       <button type="button" onClick={() => addStandalone('cam')} className="btn-secondary text-sm flex items-center gap-1"><Eye className="w-4 h-4" /> + Tekil Cam</button>
                       <button type="button" onClick={() => addStandalone('aksesuar')} className="btn-secondary text-sm flex items-center gap-1"><Package className="w-4 h-4" /> + Aksesuar</button>
                       <button type="button" onClick={() => addStandalone('işçilik')} className="btn-secondary text-sm flex items-center gap-1"><Wrench className="w-4 h-4" /> + İşçilik</button>
