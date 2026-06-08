@@ -376,6 +376,21 @@ export default function OrderDetail() {
           )}
         </div>
 
+        {/* Sipariş Görselleri */}
+        {order.gorseller?.length > 0 && (
+          <div className="card">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5" /> Sipariş Görselleri
+            </h2>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+              {order.gorseller.map((g, i) => (
+                <img key={i} src={g.dataUrl} alt={g.name || ''} onClick={() => openImages(order.gorseller, i)}
+                  className="w-full h-24 object-cover rounded-lg border border-gray-200 cursor-zoom-in" />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Payments */}
         <div className="card">
           <h2 className="text-xl font-semibold mb-4">Ödeme Geçmişi</h2>

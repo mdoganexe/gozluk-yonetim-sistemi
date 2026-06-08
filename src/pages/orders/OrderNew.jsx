@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, Plus, Trash2, User, Glasses, AlertTriangle, Eye, Wrench, Package, Sun } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, User, Glasses, AlertTriangle, Eye, Wrench, Package, Sun, Image as ImageIcon, Upload } from 'lucide-react';
 import db, { generateFisNo } from '../../db/database';
 import { decreaseStockForOrder, checkStockAvailability } from '../../utils/stockManager';
 import { useSettings } from '../../utils/useSettings';
 import ProductPicker from '../../components/ProductPicker';
 import CustomerPicker from '../../components/CustomerPicker';
+import PrescriptionModal from '../../components/PrescriptionModal';
+import { useImageViewer } from '../../components/ImageViewer';
+import { filesToImages } from '../../utils/image';
 import { LENS_BRANDS } from '../../data/eyewearBrands';
 import { usageLabel } from '../../utils/prescription';
 
@@ -26,9 +29,13 @@ export default function OrderNew() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const settings = useSettings();
+  const { openImages } = useImageViewer();
 
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedPrescription, setSelectedPrescription] = useState(null);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [orderImages, setOrderImages] = useState([]);
+  const [uploadingImg, setUploadingImg] = useState(false);
   const [items, setItems] = useState([]);
   const [kdvUygula, setKdvUygula] = useState(true);
   const [payments, setPayments] = useState([]);
@@ -199,6 +206,27 @@ export default function OrderNew() {
   const fillFullCash = () => setPayments([{ id: uid(), odeme_turu: 'nakit', tutar: totals.genel_toplam.toFixed(2) }]);
   const odenenToplam = payments.reduce((s, p) => s + (parseFloat(p.tutar) || 0), 0);
 
+  // Yeni reçete kaydedilince en yenisini otomatik seç
+  const handlePrescriptionSaved = async () => {
+    setShowPrescriptionModal(false);
+    if (!selectedCustomer) return;
+    const list = await db.prescriptions.where('musteri_id').equals(selectedCustomer.id).toArray();
+    const newest = list.reduce((a, b) => (b.id > (a?.id || 0) ? b : a), null);
+    if (newest) setSelectedPrescription(newest);
+  };
+
+  const handleOrderImageUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || !files.length) return;
+    setUploadingImg(true);
+    try {
+      const yeni = await filesToImages(files, 1400, 0.8);
+      setOrderImages(prev => [...prev, ...yeni]);
+    } catch { alert('Görsel yüklenemedi'); }
+    finally { setUploadingImg(false); e.target.value = ''; }
+  };
+  const removeOrderImage = (idx) => setOrderImages(prev => prev.filter((_, i) => i !== idx));
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedCustomer) return alert('Lütfen müşteri seçin');
@@ -225,6 +253,7 @@ export default function OrderNew() {
         musteri_id: selectedCustomer.id,
         recete_id: selectedPrescription?.id || null,
         recete_snapshot: selectedPrescription || null, // reçete mirası (anlık kopya)
+        gorseller: orderImages, // siparişe eklenen görseller (reçete kâğıdı/ürün fotoğrafı)
         durum: 'onaylandi',
         siparis_tarihi: siparisTarihiISO(),
         teslim_beklenen: orderData.teslim_beklenen,
@@ -414,21 +443,31 @@ export default function OrderNew() {
               />
             </div>
 
-            {prescriptions && prescriptions.length > 0 && (
+            {selectedCustomer && (
               <div>
-                <label className="label">Reçete (siparişe miras alınır)</label>
-                <select
-                  value={selectedPrescription?.id || ''}
-                  onChange={(e) => setSelectedPrescription(prescriptions.find(p => p.id === parseInt(e.target.value)) || null)}
-                  className="input"
-                >
-                  <option value="">Reçete seçin (opsiyonel)...</option>
-                  {prescriptions.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {new Date(p.tarih).toLocaleDateString('tr-TR')} · {p.recete_tipi === 'lens' ? 'Lens' : 'Optik'} · {usageLabel(p.kullanim || 'uzak')}{p.aktif ? ' (Aktif)' : ''}
-                    </option>
-                  ))}
-                </select>
+                <label className="label">Reçete (opsiyonel — siparişe miras alınır)</label>
+                <div className="flex gap-2">
+                  {prescriptions && prescriptions.length > 0 ? (
+                    <select
+                      value={selectedPrescription?.id || ''}
+                      onChange={(e) => setSelectedPrescription(prescriptions.find(p => p.id === parseInt(e.target.value)) || null)}
+                      className="input flex-1"
+                    >
+                      <option value="">Reçete seçin (opsiyonel)...</option>
+                      {prescriptions.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {new Date(p.tarih).toLocaleDateString('tr-TR')} · {p.recete_tipi === 'lens' ? 'Lens' : 'Optik'} · {usageLabel(p.kullanim || 'uzak')}{p.aktif ? ' (Aktif)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="input flex-1 bg-gray-50 dark:bg-slate-700 text-gray-400 flex items-center">Kayıtlı reçete yok</div>
+                  )}
+                  <button type="button" onClick={() => setShowPrescriptionModal(true)}
+                    className="btn-secondary whitespace-nowrap flex items-center gap-1">
+                    <Plus className="w-4 h-4" /> Reçete Ekle
+                  </button>
+                </div>
               </div>
             )}
 
@@ -460,6 +499,35 @@ export default function OrderNew() {
                   onChange={(e) => setOrderData({ ...orderData, teslim_beklenen: e.target.value })}
                   className="input" />
               </div>
+            </div>
+
+            {/* Sipariş Görselleri (reçete kâğıdı / ürün fotoğrafı) */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="label mb-0 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4" /> Görseller (reçete kâğıdı / fotoğraf)
+                </label>
+                <label className="btn-secondary text-sm flex items-center gap-2 cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  {uploadingImg ? 'Yükleniyor...' : 'Görsel Ekle'}
+                  <input type="file" accept="image/*" multiple capture="environment"
+                    onChange={handleOrderImageUpload} disabled={uploadingImg} className="hidden" />
+                </label>
+              </div>
+              {orderImages.length > 0 && (
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                  {orderImages.map((g, idx) => (
+                    <div key={idx} className="relative group">
+                      <img src={g.dataUrl} alt={g.name || ''} onClick={() => openImages(orderImages, idx)}
+                        className="w-full h-20 object-cover rounded-lg border border-gray-200 cursor-zoom-in" />
+                      <button type="button" onClick={() => removeOrderImage(idx)}
+                        className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -648,6 +716,14 @@ export default function OrderNew() {
           <button type="button" onClick={() => navigate('/orders')} className="btn-secondary flex-1">İptal</button>
         </div>
       </form>
+
+      {showPrescriptionModal && selectedCustomer && (
+        <PrescriptionModal
+          customerId={selectedCustomer.id}
+          onClose={() => setShowPrescriptionModal(false)}
+          onSave={handlePrescriptionSaved}
+        />
+      )}
     </div>
   );
 }
