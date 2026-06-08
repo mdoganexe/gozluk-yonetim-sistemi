@@ -39,12 +39,28 @@ function load() {
 
 let saveTimer = null;
 function save() {
-  // sık yazımları toplulaştır
+  // sık yazımları toplulaştır + atomik yaz (çökmede dosya bozulmasın)
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try { fs.writeFileSync(DATA_FILE, JSON.stringify(DB)); }
-    catch (e) { console.error('Veri yazılamadı:', e.message); }
+    try {
+      const tmp = DATA_FILE + '.tmp';
+      fs.writeFileSync(tmp, JSON.stringify(DB));
+      fs.renameSync(tmp, DATA_FILE);
+    } catch (e) { console.error('Veri yazılamadı:', e.message); }
   }, 150);
+}
+
+// Her açılışta verinin tarihli yedeğini al (son 20 tutulur)
+function backupOnStart() {
+  try {
+    if (!fs.existsSync(DATA_FILE)) return;
+    const dir = path.join(DATA_DIR, 'yedekler');
+    fs.mkdirSync(dir, { recursive: true });
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    fs.copyFileSync(DATA_FILE, path.join(dir, `optikpro-${ts}.json`));
+    const files = fs.readdirSync(dir).filter(f => f.startsWith('optikpro-') && f.endsWith('.json')).sort();
+    while (files.length > 20) { try { fs.unlinkSync(path.join(dir, files.shift())); } catch {} }
+  } catch (e) { console.error('Yedek alınamadı:', e.message); }
 }
 
 function applyOp(op) {
@@ -146,6 +162,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 load();
+backupOnStart();
 server.listen(PORT, '0.0.0.0', () => {
   const ips = [];
   const nets = os.networkInterfaces();
@@ -160,6 +177,8 @@ server.listen(PORT, '0.0.0.0', () => {
   ips.forEach(ip => console.log('  Telefon/Tablet:   http://' + ip + ':' + PORT + '   (aynı Wi-Fi ağında)'));
   console.log('');
   console.log('  Veri dosyası: ' + DATA_FILE);
+  console.log('  Otomatik yedekler: ' + path.join(DATA_DIR, 'yedekler'));
+  console.log('  Güncelleme: sadece OptikPro.exe değiştirilir, veri korunur.');
   console.log('  Kapatmak için bu pencereyi kapatın.');
   console.log('');
   if (process.platform === 'win32' && !noOpen) {
