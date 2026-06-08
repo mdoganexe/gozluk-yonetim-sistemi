@@ -1,16 +1,36 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Link } from 'react-router-dom';
-import { Plus, Search, AlertTriangle, Package } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Search, AlertTriangle, Package, ScanLine, QrCode } from 'lucide-react';
 import db from '../../db/database';
 import ProductModal from '../../components/ProductModal';
+import BarcodeScanner from '../../components/BarcodeScanner';
+import QRCodeLabel from '../../components/QRCodeLabel';
+import { findProductByCode } from '../../utils/productCode';
+import { useImageViewer } from '../../components/ImageViewer';
+import { Image as ImageIcon } from 'lucide-react';
 
 export default function ProductList() {
+  const navigate = useNavigate();
+  const { openImages } = useImageViewer();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [labelProduct, setLabelProduct] = useState(null);
 
   const products = useLiveQuery(() => db.products.toArray());
+
+  const handleScan = (code) => {
+    setShowScanner(false);
+    const found = findProductByCode(products, code);
+    if (found) {
+      navigate(`/products/${found.id}`);
+    } else {
+      setSearchTerm(code);
+      alert(`"${code}" için ürün bulunamadı. Arama kutusuna yazıldı.`);
+    }
+  };
 
   const filteredProducts = products?.filter(product => {
     const matchesSearch = 
@@ -39,13 +59,22 @@ export default function ProductList() {
             </p>
           )}
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Yeni Ürün
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowScanner(true)}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <ScanLine className="w-5 h-5" />
+            Barkod/QR Tara
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Yeni Ürün
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -61,8 +90,11 @@ export default function ProductList() {
           />
         </div>
         
-        <div className="flex gap-2">
-          {['all', 'çerçeve', 'güneşlik', 'aksesuar', 'cam_stok'].map(cat => (
+        <div className="flex gap-2 flex-wrap">
+          {[
+            ['all', 'Tümü'], ['çerçeve', 'Çerçeve'], ['güneşlik', 'Güneş Gözlüğü'],
+            ['aksesuar', 'Aksesuar'], ['cam_stok', 'Optik (Cam)']
+          ].map(([cat, label]) => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
@@ -72,7 +104,7 @@ export default function ProductList() {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              {cat === 'all' ? 'Tümü' : cat.charAt(0).toUpperCase() + cat.slice(1).replace('_', ' ')}
+              {label}
             </button>
           ))}
         </div>
@@ -99,11 +131,22 @@ export default function ProductList() {
                 return (
                   <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4">
-                      <div>
-                        <div className="font-medium">{product.marka} {product.model}</div>
-                        {product.renk && (
-                          <div className="text-sm text-gray-600">{product.renk}</div>
+                      <div className="flex items-center gap-3">
+                        {product.gorseller?.length > 0 ? (
+                          <img src={product.gorseller[0].dataUrl} alt=""
+                            onClick={() => openImages(product.gorseller, 0)}
+                            className="w-12 h-12 object-cover rounded-lg border border-gray-200 cursor-zoom-in flex-shrink-0" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            <ImageIcon className="w-5 h-5 text-gray-300" />
+                          </div>
                         )}
+                        <div>
+                          <div className="font-medium">{product.marka} {product.model}</div>
+                          {product.renk && (
+                            <div className="text-sm text-gray-600">{product.renk}</div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="py-3 px-4">
@@ -131,12 +174,21 @@ export default function ProductList() {
                       ₺{product.satis_fiyati?.toLocaleString('tr-TR')}
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <Link
-                        to={`/products/${product.id}`}
-                        className="text-primary-600 hover:text-primary-700 font-medium"
-                      >
-                        Detay
-                      </Link>
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          onClick={() => setLabelProduct(product)}
+                          title="QR etiketi / yazdır"
+                          className="text-gray-500 hover:text-primary-600"
+                        >
+                          <QrCode className="w-5 h-5" />
+                        </button>
+                        <Link
+                          to={`/products/${product.id}`}
+                          className="text-primary-600 hover:text-primary-700 font-medium"
+                        >
+                          Detay
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -161,6 +213,14 @@ export default function ProductList() {
           onClose={() => setShowModal(false)}
           onSave={() => setShowModal(false)}
         />
+      )}
+
+      {showScanner && (
+        <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />
+      )}
+
+      {labelProduct && (
+        <QRCodeLabel product={labelProduct} onClose={() => setLabelProduct(null)} />
       )}
     </div>
   );

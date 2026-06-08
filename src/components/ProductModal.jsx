@@ -1,8 +1,19 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Sparkles, ScanLine, Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
 import db from '../db/database';
+import { generateBarcode } from '../utils/productCode';
+import { filesToImages } from '../utils/image';
+import { usePasteImages, readClipboardImages } from '../utils/usePasteImages';
+import BarcodeScanner from './BarcodeScanner';
+import { useImageViewer } from './ImageViewer';
+import { ClipboardPaste } from 'lucide-react';
+import { brandsForCategory, modelsForBrand } from '../data/eyewearBrands';
 
 export default function ProductModal({ product, onClose, onSave }) {
+  const { openImages } = useImageViewer();
+  const [scanning, setScanning] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [gorseller, setGorseller] = useState(product?.gorseller || []);
   const [formData, setFormData] = useState({
     barkod: product?.barkod || '',
     sku: product?.sku || '',
@@ -26,14 +37,60 @@ export default function ProductModal({ product, onClose, onSave }) {
     notlar: product?.notlar || ''
   });
 
+  const handleImageUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const yeni = await filesToImages(files, 1000, 0.75);
+      setGorseller(prev => [...prev, ...yeni]);
+    } catch {
+      alert('Görsel yüklenemedi');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeImage = (idx) => setGorseller(prev => prev.filter((_, i) => i !== idx));
+
+  usePasteImages((imgs) => setGorseller(prev => [...prev, ...imgs]), { maxSize: 1000, quality: 0.75 });
+  const handlePasteBtn = async () => {
+    try {
+      const imgs = await readClipboardImages(1000, 0.75);
+      if (imgs.length) setGorseller(prev => [...prev, ...imgs]);
+      else alert('Panoda resim yok. Bir resmi kopyalayıp tekrar deneyin (veya Ctrl+V).');
+    } catch (e) { alert(e.message); }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
+      // Barkod tekrar kontrolü (aynı kod başka üründe varsa uyar)
+      if (formData.barkod && String(formData.barkod).trim()) {
+        const code = String(formData.barkod).trim();
+        const existing = await db.products.where('barkod').equals(code).first();
+        if (existing && existing.id !== product?.id) {
+          alert(`Bu barkod zaten kayıtlı: ${existing.marka} ${existing.model}. Farklı bir kod kullanın.`);
+          return;
+        }
+      }
+
+      // Sayısal alanları string olarak kaydetme (stok hesaplamaları bozulmasın)
+      const payload = {
+        ...formData,
+        gorseller,
+        alis_fiyati: parseFloat(formData.alis_fiyati) || 0,
+        satis_fiyati: parseFloat(formData.satis_fiyati) || 0,
+        kdv_orani: parseFloat(formData.kdv_orani) || 0,
+        stok_adedi: parseInt(formData.stok_adedi) || 0,
+        min_stok_uyari: parseInt(formData.min_stok_uyari) || 0
+      };
       if (product) {
-        await db.products.update(product.id, formData);
+        await db.products.update(product.id, payload);
       } else {
-        await db.products.add(formData);
+        await db.products.add(payload);
       }
       onSave();
     } catch (error) {
@@ -63,29 +120,63 @@ export default function ProductModal({ product, onClose, onSave }) {
                 <input
                   type="text"
                   required
+                  list="marka-onerileri"
                   value={formData.marka}
                   onChange={(e) => setFormData({ ...formData, marka: e.target.value })}
                   className="input"
+                  placeholder="Yazın veya listeden seçin"
+                  autoComplete="off"
                 />
+                <datalist id="marka-onerileri">
+                  {brandsForCategory(formData.kategori).map(b => <option key={b} value={b} />)}
+                </datalist>
               </div>
               <div>
                 <label className="label">Model *</label>
                 <input
                   type="text"
                   required
+                  list="model-onerileri"
                   value={formData.model}
                   onChange={(e) => setFormData({ ...formData, model: e.target.value })}
                   className="input"
+                  placeholder="Yazın veya listeden seçin"
+                  autoComplete="off"
                 />
+                <datalist id="model-onerileri">
+                  {modelsForBrand(formData.marka).map(m => <option key={m} value={m} />)}
+                </datalist>
               </div>
               <div>
                 <label className="label">Barkod</label>
-                <input
-                  type="text"
-                  value={formData.barkod}
-                  onChange={(e) => setFormData({ ...formData, barkod: e.target.value })}
-                  className="input"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formData.barkod}
+                    onChange={(e) => setFormData({ ...formData, barkod: e.target.value })}
+                    className="input"
+                    placeholder="Ürünün üzerindeki kodu okutun veya yazın"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setScanning(true)}
+                    title="Ürünün üzerindeki QR/barkodu okut"
+                    className="btn-primary px-3 flex items-center gap-1 whitespace-nowrap"
+                  >
+                    <ScanLine className="w-4 h-4" /> Tara
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, barkod: generateBarcode() })}
+                    title="Barkod yoksa otomatik üret"
+                    className="btn-secondary px-3 flex items-center gap-1 whitespace-nowrap"
+                  >
+                    <Sparkles className="w-4 h-4" /> Üret
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Ürünün üzerindeki hazır QR/barkodu "Tara" ile okutup kaydedebilirsiniz.
+                </p>
               </div>
               <div>
                 <label className="label">SKU</label>
@@ -105,9 +196,9 @@ export default function ProductModal({ product, onClose, onSave }) {
                   className="input"
                 >
                   <option value="çerçeve">Çerçeve</option>
-                  <option value="güneşlik">Güneşlik</option>
+                  <option value="güneşlik">Güneş Gözlüğü</option>
                   <option value="aksesuar">Aksesuar</option>
-                  <option value="cam_stok">Cam (Stok)</option>
+                  <option value="cam_stok">Optik (Cam)</option>
                 </select>
               </div>
               <div>
@@ -254,6 +345,46 @@ export default function ProductModal({ product, onClose, onSave }) {
             </div>
           </div>
 
+          {/* Ürün Fotoğrafları */}
+          <div className="border-t pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-gray-600" /> Ürün Fotoğrafları
+              </h3>
+              <div className="flex gap-2">
+                <button type="button" onClick={handlePasteBtn} className="btn-secondary text-sm flex items-center gap-2">
+                  <ClipboardPaste className="w-4 h-4" /> Yapıştır
+                </button>
+                <label className="btn-secondary text-sm flex items-center gap-2 cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  {uploading ? 'Yükleniyor...' : 'Fotoğraf Ekle'}
+                  <input type="file" accept="image/*" multiple capture="environment"
+                    onChange={handleImageUpload} disabled={uploading} className="hidden" />
+                </label>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mb-2">Dosyadan ekleyebilir, telefondan çekebilir veya <strong>Ctrl+V</strong> ile yapıştırabilirsiniz.</p>
+            {gorseller.length > 0 ? (
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                {gorseller.map((g, idx) => (
+                  <div key={idx} className="relative group">
+                    <img src={g.dataUrl} alt={g.name || ''}
+                      onClick={() => openImages(gorseller, idx)}
+                      className="w-full h-24 object-cover rounded-lg border border-gray-200 cursor-zoom-in" />
+                    <button type="button" onClick={() => removeImage(idx)}
+                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 text-center py-4">
+                Henüz fotoğraf yok. Telefondan çekebilir veya bilgisayardan ekleyebilirsiniz.
+              </p>
+            )}
+          </div>
+
           {/* Notlar */}
           <div>
             <label className="label">Notlar</label>
@@ -288,6 +419,13 @@ export default function ProductModal({ product, onClose, onSave }) {
           </div>
         </form>
       </div>
+
+      {scanning && (
+        <BarcodeScanner
+          onScan={(code) => { setFormData(prev => ({ ...prev, barkod: code })); setScanning(false); }}
+          onClose={() => setScanning(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,16 +1,24 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, Users, Package, ShoppingCart, 
-  Wallet, BarChart3, Settings, Menu, X, Glasses, LogOut, User 
+import { useLiveQuery } from 'dexie-react-hooks';
+import {
+  LayoutDashboard, Users, Package, ShoppingCart,
+  Wallet, BarChart3, Settings, Menu, X, Glasses, LogOut, User,
+  CalendarClock, Sun, Moon, ScanLine
 } from 'lucide-react';
 import { logout, getCurrentUser } from '../utils/auth';
+import { getTheme, toggleTheme } from '../utils/theme';
+import GlobalSearch from './GlobalSearch';
+import BarcodeScanner from './BarcodeScanner';
+import db from '../db/database';
+import { findProductByCode } from '../utils/productCode';
 
 const menuItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/customers', icon: Users, label: 'Müşteriler' },
   { path: '/products', icon: Package, label: 'Stok' },
   { path: '/orders', icon: ShoppingCart, label: 'Siparişler' },
+  { path: '/appointments', icon: CalendarClock, label: 'Randevular' },
   { path: '/payments', icon: Wallet, label: 'Kasa' },
   { path: '/reports', icon: BarChart3, label: 'Raporlar' },
   { path: '/settings', icon: Settings, label: 'Ayarlar' },
@@ -18,15 +26,29 @@ const menuItems = [
 
 export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [theme, setThemeState] = useState(getTheme());
+  const [scanning, setScanning] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
+  const products = useLiveQuery(() => db.products.toArray());
+
+  const handleScan = (code) => {
+    setScanning(false);
+    const found = findProductByCode(products, code);
+    if (found) navigate(`/products/${found.id}`);
+    else alert(`"${code}" için ürün bulunamadı.`);
+  };
 
   const handleLogout = () => {
     if (confirm('Çıkış yapmak istediğinize emin misiniz?')) {
       logout();
       navigate('/login');
     }
+  };
+
+  const handleToggleTheme = () => {
+    setThemeState(toggleTheme());
   };
 
   return (
@@ -104,11 +126,34 @@ export default function Layout({ children }) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-8">
+      <main className="flex-1 overflow-auto flex flex-col">
+        {/* Top Header */}
+        <header className="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-3 flex items-center gap-4">
+          <GlobalSearch />
+          <button
+            onClick={() => setScanning(true)}
+            title="Barkod/QR tara"
+            className="ml-auto p-2 rounded-lg text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+          >
+            <ScanLine className="w-5 h-5" />
+          </button>
+          <button
+            onClick={handleToggleTheme}
+            title={theme === 'dark' ? 'Açık moda geç' : 'Karanlık moda geç'}
+            className="p-2 rounded-lg text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+          >
+            {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
+        </header>
+
+        <div className="p-8 flex-1">
           {children}
         </div>
       </main>
+
+      {scanning && (
+        <BarcodeScanner onScan={handleScan} onClose={() => setScanning(false)} />
+      )}
     </div>
   );
 }

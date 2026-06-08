@@ -14,6 +14,7 @@ import OrderSlip from './pages/orders/OrderSlip';
 import Payments from './pages/Payments';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Appointments from './pages/Appointments';
 
 // Protected Route bileşeni
 function ProtectedRoute({ children }) {
@@ -50,6 +51,7 @@ function App() {
                   <Route path="/orders" element={<OrderList />} />
                   <Route path="/orders/new" element={<OrderNew />} />
                   <Route path="/orders/:id" element={<OrderDetail />} />
+                  <Route path="/appointments" element={<Appointments />} />
                   <Route path="/payments" element={<Payments />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/settings" element={<Settings />} />

@@ -1,17 +1,45 @@
 import { useState, useEffect } from 'react';
-import { Download, Upload, Database, Save } from 'lucide-react';
+import { Download, Upload, Database, Save, Users, UserPlus, Trash2, KeyRound } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import db, { exportData, importData } from '../db/database';
+import { createUser, deleteUser, updatePassword, getCurrentUser } from '../utils/auth';
 
 export default function Settings() {
   const [importing, setImporting] = useState(false);
+  const currentUser = getCurrentUser();
+  const isAdmin = currentUser?.role === 'admin';
+  const usersRaw = useLiveQuery(() => db.users.toArray());
+  const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'personel' });
+
+  const handleAddUser = async (e) => {
+    e.preventDefault();
+    try {
+      await createUser(newUser.username, newUser.password, '', newUser.fullName, newUser.role);
+      setNewUser({ username: '', fullName: '', password: '', role: 'personel' });
+      alert('Kullanıcı eklendi');
+    } catch (err) {
+      alert('Hata: ' + err.message);
+    }
+  };
+
+  const handleDeleteUser = async (id) => {
+    if (!confirm('Bu kullanıcı silinsin mi?')) return;
+    try { await deleteUser(id); } catch (err) { alert('Hata: ' + err.message); }
+  };
+
+  const handleResetPassword = async (id, username) => {
+    const np = prompt(`"${username}" için yeni şifre (en az 4 karakter):`);
+    if (!np) return;
+    try { await updatePassword(id, np); alert('Şifre güncellendi'); } catch (err) { alert('Hata: ' + err.message); }
+  };
   const [companyInfo, setCompanyInfo] = useState({
     companyName: 'OptikPro',
     companySlogan: 'Gözlük ve Optik Ürünler',
     companyPhone: '0XXX XXX XX XX',
     companyAddress: 'Adres Bilgisi',
     companyTaxNo: 'XXXXXXXXXX',
-    companyEmail: 'info@optikpro.com'
+    companyEmail: 'info@optikpro.com',
+    kdvOrani: 20
   });
   const [saving, setSaving] = useState(false);
 
@@ -144,15 +172,33 @@ export default function Settings() {
               />
             </div>
           </div>
-          <div>
-            <label className="label">Vergi No *</label>
-            <input
-              type="text"
-              className="input"
-              value={companyInfo.companyTaxNo}
-              onChange={(e) => setCompanyInfo({ ...companyInfo, companyTaxNo: e.target.value })}
-              placeholder="XXXXXXXXXX"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Vergi No *</label>
+              <input
+                type="text"
+                className="input"
+                value={companyInfo.companyTaxNo}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, companyTaxNo: e.target.value })}
+                placeholder="XXXXXXXXXX"
+              />
+            </div>
+            <div>
+              <label className="label">Varsayılan KDV Oranı (%)</label>
+              <select
+                className="input"
+                value={companyInfo.kdvOrani}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, kdvOrani: parseFloat(e.target.value) })}
+              >
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="8">8</option>
+                <option value="10">10</option>
+                <option value="18">18</option>
+                <option value="20">20</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Yeni siparişlerde uygulanacak KDV oranı.</p>
+            </div>
           </div>
           <button
             onClick={handleSaveCompanyInfo}
@@ -206,31 +252,87 @@ export default function Settings() {
           </div>
 
           <div className="border-t pt-4">
-            <h3 className="font-medium mb-2 text-red-600">Veritabanını Sıfırla</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              Veritabanı hatası alıyorsanız veya temiz bir başlangıç yapmak istiyorsanız bu butonu kullanın.
-              <span className="text-red-600 font-medium"> Tüm veriler silinecektir!</span>
-            </p>
-            <a
-              href="/reset-db.html"
-              target="_blank"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
-            >
-              <Database className="w-5 h-5" />
-              Veritabanını Sıfırla
-            </a>
-          </div>
-
-          <div className="border-t pt-4">
-            <h3 className="font-medium mb-2 text-orange-600">Otomatik Yedekleme Önerisi</h3>
+            <h3 className="font-medium mb-2 text-orange-600">Yedekleme Önerisi</h3>
             <p className="text-sm text-gray-600">
-              Verilerinizin güvenliği için her gün sonunda yedek almanızı öneririz. 
-              Yedek dosyalarını bulut depolama (Google Drive, Dropbox vb.) veya harici disk gibi 
-              güvenli bir yerde saklayın.
+              Tüm veriler sunucudaki <code className="font-mono">optikpro-data.json</code> dosyasında tutulur
+              (OptikPro.exe ile aynı klasörde). Düzenli olarak "Dışa Aktar" ile yedek alın veya bu dosyayı
+              güvenli bir yere (bulut/harici disk) kopyalayın.
             </p>
           </div>
         </div>
       </div>
+
+      {/* Kullanıcı Yönetimi */}
+      {isAdmin && (
+        <div className="card">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Users className="w-6 h-6" /> Kullanıcı Yönetimi
+          </h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Personel hesapları ekleyin; bu kullanıcılar kendi kullanıcı adı/şifresiyle giriş yapar.
+          </p>
+
+          {/* Mevcut kullanıcılar */}
+          <div className="space-y-2 mb-6">
+            {usersRaw?.map(u => (
+              <div key={u.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium">{u.fullName || u.username}
+                    <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-primary-100 text-primary-700">{u.role}</span>
+                  </p>
+                  <p className="text-sm text-gray-600">@{u.username}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => handleResetPassword(u.id, u.username)} title="Şifre sıfırla"
+                    className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg">
+                    <KeyRound className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => handleDeleteUser(u.id)} title="Sil"
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {(!usersRaw || usersRaw.length === 0) && (
+              <p className="text-sm text-gray-500">Henüz kullanıcı yok</p>
+            )}
+          </div>
+
+          {/* Yeni kullanıcı */}
+          <form onSubmit={handleAddUser} className="border-t pt-4">
+            <h3 className="font-medium mb-3 flex items-center gap-2"><UserPlus className="w-5 h-5" /> Yeni Kullanıcı</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="label">Ad Soyad</label>
+                <input type="text" className="input" value={newUser.fullName}
+                  onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })} placeholder="Ahmet Yılmaz" />
+              </div>
+              <div>
+                <label className="label">Kullanıcı Adı *</label>
+                <input type="text" className="input" value={newUser.username}
+                  onChange={(e) => setNewUser({ ...newUser, username: e.target.value })} placeholder="ahmet" autoComplete="off" />
+              </div>
+              <div>
+                <label className="label">Şifre * (en az 4)</label>
+                <input type="text" className="input" value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} placeholder="••••" autoComplete="off" />
+              </div>
+              <div>
+                <label className="label">Rol</label>
+                <select className="input" value={newUser.role}
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}>
+                  <option value="personel">Personel</option>
+                  <option value="admin">Yönetici</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" className="btn-primary flex items-center gap-2 mt-4">
+              <UserPlus className="w-5 h-5" /> Kullanıcı Ekle
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Sistem Bilgisi */}
       <div className="card">
@@ -238,15 +340,15 @@ export default function Settings() {
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Versiyon:</span>
-            <span className="font-medium">1.0.0</span>
+            <span className="font-medium">2.0.0</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Veritabanı:</span>
-            <span className="font-medium">IndexedDB (Dexie.js)</span>
+            <span className="font-medium">Ortak Sunucu (JSON)</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Tarayıcı Depolama:</span>
-            <span className="font-medium">Yerel (Offline Çalışır)</span>
+            <span className="text-gray-600">Erişim:</span>
+            <span className="font-medium">Ağ üzerinden çok cihaz</span>
           </div>
         </div>
       </div>

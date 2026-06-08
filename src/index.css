@@ -219,6 +219,71 @@
   }
 }
 
+/* ============================================================
+   KARANLIK MOD
+   Uygulama genelinde sabit Tailwind utility'leri (.bg-white,
+   .text-gray-900 vb.) kullanıldığı için, .dark kapsamı altında
+   bunları yeniden tanımlıyoruz. ".dark .bg-white" seçicisi tek
+   sınıflı utility'den daha spesifik olduğu için her zaman kazanır.
+   ============================================================ */
+html.dark {
+  color-scheme: dark;
+}
+.dark body { background-color: #0f172a; color: #e2e8f0; }
+
+/* Yüzeyler */
+.dark .bg-white { background-color: #1e293b !important; }
+.dark .bg-gray-50 { background-color: #0f172a !important; }
+.dark .bg-gray-100 { background-color: #334155 !important; }
+.dark .card { background-color: #1e293b; border-color: #334155; }
+
+/* Metin */
+.dark .text-gray-900 { color: #f1f5f9 !important; }
+.dark .text-gray-800 { color: #e2e8f0 !important; }
+.dark .text-gray-700 { color: #cbd5e1 !important; }
+.dark .text-gray-600 { color: #94a3b8 !important; }
+.dark .text-gray-500 { color: #94a3b8 !important; }
+
+/* Kenarlıklar */
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border-gray-100,
+.dark .border-b,
+.dark .border-t { border-color: #334155 !important; }
+
+/* Hover yüzeyleri */
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover { background-color: #334155 !important; }
+.dark .hover\:bg-gray-200:hover,
+.dark .hover\:bg-gray-300:hover { background-color: #475569 !important; }
+
+/* Form alanları */
+.dark .input {
+  background-color: #0f172a;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+.dark .input::placeholder { color: #64748b; }
+.dark .label { color: #cbd5e1; }
+.dark .btn-secondary {
+  background-color: #334155;
+  color: #e2e8f0;
+}
+.dark .btn-secondary:hover { background-color: #475569; }
+
+/* Hafif renkli rozet/tint zeminleri (okunabilirlik için koyulaştır) */
+.dark .bg-red-50 { background-color: #3f1d2b !important; }
+.dark .bg-green-50 { background-color: #14342b !important; }
+.dark .bg-blue-50 { background-color: #1e293b !important; }
+.dark .bg-orange-50 { background-color: #3a2a17 !important; }
+.dark .bg-amber-50 { background-color: #3a2e12 !important; }
+.dark .bg-yellow-50 { background-color: #3a3312 !important; }
+.dark .bg-purple-50 { background-color: #2a1f3d !important; }
+.dark .bg-primary-50 { background-color: #0c2a3d !important; }
+
+/* date/number input ikonları görünür olsun */
+.dark input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

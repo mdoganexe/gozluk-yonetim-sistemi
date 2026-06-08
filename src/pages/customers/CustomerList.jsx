@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Phone, Mail, Eye } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Eye, Zap } from 'lucide-react';
 import db from '../../db/database';
 import CustomerModal from '../../components/CustomerModal';
 import QuickSaleModal from '../../components/QuickSaleModal';
@@ -27,7 +27,6 @@ export default function CustomerList() {
 
   const handleCustomerSaved = (customerId) => {
     setShowModal(false);
-    
     // Yeni eklenen müşteriyi bul
     db.customers.get(customerId).then(customer => {
       if (customer) {
@@ -35,6 +34,11 @@ export default function CustomerList() {
         setShowQuickSale(true);
       }
     });
+  };
+
+  const openQuickSale = (customer) => {
+    setSelectedCustomer(customer);
+    setShowQuickSale(true);
   };
 
   return (
@@ -53,6 +57,7 @@ export default function CustomerList() {
 
       {/* Search */}
       <div className="card">
+        <p className="text-xs text-gray-500 mb-3">İpucu: Bir müşteriye <strong>çift tıklayınca</strong> hızlı satış açılır.</p>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
@@ -81,7 +86,10 @@ export default function CustomerList() {
             </thead>
             <tbody>
               {filteredCustomers?.map(customer => (
-                <tr key={customer.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr key={customer.id}
+                  onDoubleClick={() => openQuickSale(customer)}
+                  title="Çift tıkla: hızlı satış"
+                  className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
                   <td className="py-3 px-4">
                     <div className="font-medium">{customer.ad} {customer.soyad}</div>
                   </td>
@@ -106,13 +114,23 @@ export default function CustomerList() {
                     {new Date(customer.olusturma_tarihi).toLocaleDateString('tr-TR')}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <Link
-                      to={`/customers/${customer.id}`}
-                      className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                      <Eye className="w-4 h-4" />
-                      Detay
-                    </Link>
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => openQuickSale(customer)}
+                        className="inline-flex items-center gap-1 text-amber-600 hover:text-amber-700 font-medium"
+                        title="Hızlı satış"
+                      >
+                        <Zap className="w-4 h-4" />
+                        Hızlı Satış
+                      </button>
+                      <Link
+                        to={`/customers/${customer.id}`}
+                        className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Detay
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
