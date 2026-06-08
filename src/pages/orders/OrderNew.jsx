@@ -107,6 +107,11 @@ export default function OrderNew() {
       prefilledRef.current = true;
       setItems([newItem('güneş', null)]);
     }
+    if (type === 'gozluk' && !prefilledRef.current) {
+      // Gözlük satışı: çerçeve + cam seti hazır gelsin (reçete dropdown'dan seçilir)
+      prefilledRef.current = true;
+      addGozlukGroup();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, customers]);
 

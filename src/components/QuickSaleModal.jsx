@@ -34,7 +34,7 @@ export default function QuickSaleModal({ customer, onClose }) {
     setSelected(key);
     setTimeout(() => {
       if (key === 'gozluk') {
-        navigate(`/customers/${customer.id}?action=prescription&next=order`);
+        navigate(`/orders/new?customer=${customer.id}&type=gozluk`);
       } else if (key === 'gunes') {
         navigate(`/orders/new?customer=${customer.id}&type=gunes`);
       } else {
