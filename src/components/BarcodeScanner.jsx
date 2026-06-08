@@ -9,6 +9,20 @@ const REGION_ID = 'barcode-scanner-region';
  * kullanılıyorsa manuel/otomatik klavye girişi de kabul eder.
  * props: onScan(text), onClose
  */
+// Tarayıcıyı yalnızca gerçekten çalışıyorsa durdur (aksi halde html5-qrcode
+// "Cannot stop, scanner is not running" hatası fırlatır — senkron olduğu için
+// promise .catch() yakalamaz). State: 2=SCANNING, 3=PAUSED.
+async function safeStop(inst) {
+  if (!inst) return;
+  try {
+    const st = typeof inst.getState === 'function' ? inst.getState() : 2;
+    if (st === 2 || st === 3) {
+      await inst.stop();
+    }
+  } catch { /* zaten durmuş/başlamamış - yok say */ }
+  try { inst.clear && inst.clear(); } catch {}
+}
+
 export default function BarcodeScanner({ onScan, onClose }) {
   const [error, setError] = useState('');
   const [manual, setManual] = useState('');
@@ -17,6 +31,7 @@ export default function BarcodeScanner({ onScan, onClose }) {
 
   useEffect(() => {
     let html5 = null;
+    let cancelled = false;
     const start = async () => {
       try {
         html5 = new Html5Qrcode(REGION_ID, { verbose: false });
@@ -27,16 +42,18 @@ export default function BarcodeScanner({ onScan, onClose }) {
           (decodedText) => finish(decodedText),
           () => {} // her kareye gelen "bulunamadı" hatalarını yok say
         );
+        // Başlatma sırasında bileşen kapandıysa, başlar başlamaz durdur
+        if (cancelled) safeStop(html5);
       } catch (e) {
-        setError('Kamera açılamadı. USB barkod okuyucuyla veya aşağıdaki kutuya yazıp Enter ile arayabilirsiniz.');
+        if (!cancelled) {
+          setError('Kamera açılamadı. USB barkod okuyucuyla veya aşağıdaki kutuya yazıp Enter ile arayabilirsiniz.');
+        }
       }
     };
     start();
     return () => {
-      // Bu effect çalışmasına ait örneği durdur (StrictMode çift-mount güvenli)
-      if (html5) {
-        html5.stop().then(() => html5.clear()).catch(() => {});
-      }
+      cancelled = true;
+      safeStop(html5);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -44,7 +61,7 @@ export default function BarcodeScanner({ onScan, onClose }) {
   const finish = async (text) => {
     if (handledRef.current) return;
     handledRef.current = true;
-    try { await scannerRef.current?.stop(); } catch {}
+    await safeStop(scannerRef.current);
     onScan(String(text).trim());
   };
 
