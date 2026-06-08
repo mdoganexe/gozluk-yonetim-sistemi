@@ -61,8 +61,16 @@ export default function SaleWizard({ onClose }) {
   const [items, setItems] = useState([]);
   const [kdvUygula, setKdvUygula] = useState(true);
   const [discount, setDiscount] = useState({ indirim_yuzde: 0, indirim_tl: 0 });
+  const [siparisTarihi, setSiparisTarihi] = useState(new Date().toISOString().split('T')[0]);
   const [teslim, setTeslim] = useState('');
   const [notlar, setNotlar] = useState('');
+
+  const siparisTarihiISO = () => {
+    const today = new Date().toISOString().split('T')[0];
+    if (!siparisTarihi || siparisTarihi === today) return new Date().toISOString();
+    const [y, m, d] = siparisTarihi.split('-').map(Number);
+    const dt = new Date(); dt.setFullYear(y, m - 1, d); return dt.toISOString();
+  };
 
   useEffect(() => { setKdvUygula((settings.kdvOrani || 0) > 0); }, [settings.kdvOrani]);
 
@@ -205,7 +213,7 @@ export default function SaleWizard({ onClose }) {
         recete_id: receteId,
         recete_snapshot: receteSnapshot,
         durum: 'onaylandi',
-        siparis_tarihi: new Date().toISOString(),
+        siparis_tarihi: siparisTarihiISO(),
         teslim_beklenen: teslim,
         ara_toplam: totals.ara_toplam,
         indirim_tl: totals.indirim,
@@ -511,11 +519,13 @@ export default function SaleWizard({ onClose }) {
 
                   {/* İndirim + KDV + teslim */}
                   <div className="border-t pt-4 space-y-3">
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div><label className="label">İndirim (%)</label>
                         <input type="number" value={discount.indirim_yuzde} onChange={(e) => setDiscount({ indirim_yuzde: parseFloat(e.target.value) || 0, indirim_tl: 0 })} className="input" /></div>
                       <div><label className="label">İndirim (TL)</label>
                         <input type="number" value={discount.indirim_tl} onChange={(e) => setDiscount({ indirim_tl: parseFloat(e.target.value) || 0, indirim_yuzde: 0 })} className="input" /></div>
+                      <div><label className="label">Sipariş Tarihi</label>
+                        <input type="date" value={siparisTarihi} onChange={(e) => setSiparisTarihi(e.target.value)} className="input" /></div>
                       <div><label className="label">Teslim Tarihi</label>
                         <input type="date" value={teslim} onChange={(e) => setTeslim(e.target.value)} className="input" /></div>
                     </div>

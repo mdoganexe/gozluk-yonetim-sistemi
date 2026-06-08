@@ -32,12 +32,25 @@ export default function OrderNew() {
   const [kdvUygula, setKdvUygula] = useState(true);
   const [payments, setPayments] = useState([]);
   const [orderData, setOrderData] = useState({
+    siparis_tarihi: new Date().toISOString().split('T')[0],
     teslim_beklenen: '',
     indirim_yuzde: 0,
     indirim_tl: 0,
     notlar: ''
   });
   const prefilledRef = useRef(false);
+
+  // Seçilen sipariş tarihini, günün saatiyle ISO'ya çevir (tarih aralığı sorgularıyla uyumlu)
+  const siparisTarihiISO = () => {
+    const today = new Date().toISOString().split('T')[0];
+    if (!orderData.siparis_tarihi || orderData.siparis_tarihi === today) {
+      return new Date().toISOString();
+    }
+    const [y, m, d] = orderData.siparis_tarihi.split('-').map(Number);
+    const dt = new Date();
+    dt.setFullYear(y, m - 1, d);
+    return dt.toISOString();
+  };
 
   const customers = useLiveQuery(() => db.customers.toArray());
   const products = useLiveQuery(() => db.products.toArray());
@@ -79,6 +92,11 @@ export default function OrderNew() {
         newItem('cam_sag', null),
         newItem('cam_sol', null)
       ]);
+    }
+    if (type === 'gunes' && !prefilledRef.current) {
+      // Güneş gözlüğü: tek kalem, reçete gerekmez
+      prefilledRef.current = true;
+      setItems([newItem('güneş', null)]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, customers]);
@@ -207,7 +225,7 @@ export default function OrderNew() {
         recete_id: selectedPrescription?.id || null,
         recete_snapshot: selectedPrescription || null, // reçete mirası (anlık kopya)
         durum: 'onaylandi',
-        siparis_tarihi: new Date().toISOString(),
+        siparis_tarihi: siparisTarihiISO(),
         teslim_beklenen: orderData.teslim_beklenen,
         ara_toplam: totals.ara_toplam,
         indirim_tl: totals.indirim,
@@ -428,11 +446,19 @@ export default function OrderNew() {
               </div>
             )}
 
-            <div>
-              <label className="label">Teslim Tarihi</label>
-              <input type="date" value={orderData.teslim_beklenen}
-                onChange={(e) => setOrderData({ ...orderData, teslim_beklenen: e.target.value })}
-                className="input md:w-1/3" />
+            <div className="grid grid-cols-2 gap-4 md:w-2/3">
+              <div>
+                <label className="label">Sipariş Tarihi</label>
+                <input type="date" value={orderData.siparis_tarihi}
+                  onChange={(e) => setOrderData({ ...orderData, siparis_tarihi: e.target.value })}
+                  className="input" />
+              </div>
+              <div>
+                <label className="label">Teslim Tarihi</label>
+                <input type="date" value={orderData.teslim_beklenen}
+                  onChange={(e) => setOrderData({ ...orderData, teslim_beklenen: e.target.value })}
+                  className="input" />
+              </div>
             </div>
           </div>
         </div>
