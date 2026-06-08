@@ -11,25 +11,54 @@ const hashPassword = async (password) => {
 };
 
 // Kullanıcı oluştur
-export const createUser = async (username, password, email, fullName) => {
+export const createUser = async (username, password, email, fullName, role = 'admin') => {
+  username = (username || '').trim();
+  if (!username) throw new Error('Kullanıcı adı gerekli');
+  if (!password || password.length < 4) throw new Error('Şifre en az 4 karakter olmalı');
+
   const existingUser = await db.users.where('username').equals(username).first();
   if (existingUser) {
     throw new Error('Bu kullanıcı adı zaten kullanılıyor');
   }
 
   const hashedPassword = await hashPassword(password);
-  
+
   const userId = await db.users.add({
     username,
     password: hashedPassword,
-    email,
-    fullName,
-    role: 'admin',
+    email: email || '',
+    fullName: fullName || username,
+    role,
     createdAt: new Date().toISOString(),
     lastLogin: null
   });
 
   return userId;
+};
+
+// Kullanıcıları listele (şifre hariç)
+export const listUsers = async () => {
+  const users = await db.users.toArray();
+  return users.map(({ password, ...rest }) => rest);
+};
+
+// Kullanıcı sil (son admin silinemez)
+export const deleteUser = async (id) => {
+  const users = await db.users.toArray();
+  const target = users.find(u => u.id === id);
+  if (!target) return;
+  const adminCount = users.filter(u => u.role === 'admin').length;
+  if (target.role === 'admin' && adminCount <= 1) {
+    throw new Error('Son yönetici hesabı silinemez');
+  }
+  await db.users.delete(id);
+};
+
+// Şifre değiştir
+export const updatePassword = async (id, newPassword) => {
+  if (!newPassword || newPassword.length < 4) throw new Error('Şifre en az 4 karakter olmalı');
+  const hashedPassword = await hashPassword(newPassword);
+  await db.users.update(id, { password: hashedPassword });
 };
 
 // Giriş yap

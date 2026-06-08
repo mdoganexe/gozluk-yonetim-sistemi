@@ -4,6 +4,7 @@ import App from './App'
 import './index.css'
 import { initTheme } from './utils/theme'
 import { initDB } from './db/database'
+import { createDefaultAdmin } from './utils/auth'
 
 initTheme()
 
@@ -31,7 +32,9 @@ function Splash({ text, error }) {
 root.render(<Splash text="Veriler yükleniyor…" />)
 
 initDB()
-  .then(() => {
+  .then(async () => {
+    // İlk açılışta yönetici hesabı yoksa otomatik oluştur (kayıt yerine direkt giriş)
+    try { await createDefaultAdmin(); } catch (e) { /* yarış durumu - sorun değil */ }
     root.render(
       <React.StrictMode>
         <App />
