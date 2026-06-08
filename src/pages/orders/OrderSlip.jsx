@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowLeft, Printer } from 'lucide-react';
 import db from '../../db/database';
+import { groupOrderItems, kalemLabel, prescriptionOf } from '../../utils/orderHelpers';
 
 export default function OrderSlip() {
   const { id } = useParams();
@@ -18,12 +19,16 @@ export default function OrderSlip() {
   const customer = useLiveQuery(() => 
     order ? db.customers.get(order.musteri_id) : null
   , [order]);
-  const prescription = useLiveQuery(() =>
+  const prescriptionDb = useLiveQuery(() =>
     order?.recete_id ? db.prescriptions.get(order.recete_id) : null
   , [order]);
   const items = useLiveQuery(() =>
     db.order_items.where('siparis_id').equals(parseInt(id)).toArray()
   );
+
+  const prescription = prescriptionOf(order, prescriptionDb);
+  const isLens = prescription?.recete_tipi === 'lens';
+  const { groups, standalone } = groupOrderItems(items);
 
   // Ayarları yükle
   useLiveQuery(async () => {
@@ -153,51 +158,34 @@ export default function OrderSlip() {
         {prescription && (
           <div className="print-section" style={{ border: '2px solid #000', padding: '8px', marginTop: '12px' }}>
             <div className="print-section-title" style={{ fontSize: '12px', marginBottom: '8px' }}>
-              REÇETE BİLGİLERİ
+              {isLens ? 'LENS REÇETESİ' : 'REÇETE BİLGİLERİ'}{prescription.lens_marka ? ` — ${prescription.lens_marka}` : ''}
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f0f0f0' }}>
-                  <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'center' }}></th>
-                  <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'center' }}>SPH</th>
-                  <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'center' }}>CYL</th>
-                  <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'center' }}>AXIS</th>
-                  <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'center' }}>PD</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ border: '1px solid #000', padding: '6px', fontWeight: 'bold', textAlign: 'center' }}>SAĞ</td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
-                    {prescription.sag_sph}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
-                    {prescription.sag_cyl}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
-                    {prescription.sag_axis}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
-                    {prescription.sag_pd}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ border: '1px solid #000', padding: '6px', fontWeight: 'bold', textAlign: 'center' }}>SOL</td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
-                    {prescription.sol_sph}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
-                    {prescription.sol_cyl}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
-                    {prescription.sol_axis}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>
-                    {prescription.sol_pd}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            {(() => {
+              const cols = isLens
+                ? [['SPH', 'sag_sfera', 'sol_sfera'], ['CYL', 'sag_silindir', 'sol_silindir'], ['AXIS', 'sag_aks', 'sol_aks'], ['BC', 'sag_bc', 'sol_bc'], ['DIA', 'sag_dia', 'sol_dia']]
+                : [['SPH', 'sag_sfera', 'sol_sfera'], ['CYL', 'sag_silindir', 'sol_silindir'], ['AXIS', 'sag_aks', 'sol_aks'], ['PD', 'pd_uzak_sag', 'pd_uzak_sol']];
+              const cell = { border: '1px solid #000', padding: '6px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' };
+              return (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f0f0f0' }}>
+                      <th style={{ border: '1px solid #000', padding: '6px' }}></th>
+                      {cols.map(c => <th key={c[0]} style={{ border: '1px solid #000', padding: '6px', textAlign: 'center' }}>{c[0]}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ ...cell }}>SAĞ</td>
+                      {cols.map(c => <td key={c[0]} style={cell}>{prescription[c[1]] || '-'}</td>)}
+                    </tr>
+                    <tr>
+                      <td style={{ ...cell }}>SOL</td>
+                      {cols.map(c => <td key={c[0]} style={cell}>{prescription[c[2]] || '-'}</td>)}
+                    </tr>
+                  </tbody>
+                </table>
+              );
+            })()}
             {prescription.notlar && (
               <div style={{ marginTop: '6px', fontSize: '9px', padding: '4px', backgroundColor: '#fff3cd', border: '1px solid #ffc107' }}>
                 <strong>Not:</strong> {prescription.notlar}
@@ -212,21 +200,16 @@ export default function OrderSlip() {
           <table className="print-table">
             <thead>
               <tr>
-                <th style={{ width: '50%' }}>Kalem</th>
+                <th style={{ width: '45%' }}>Kalem</th>
                 <th style={{ width: '15%', textAlign: 'center' }}>Adet</th>
-                <th style={{ width: '35%' }}>Açıklama</th>
+                <th style={{ width: '40%' }}>Cam Markası / Açıklama</th>
               </tr>
             </thead>
             <tbody>
-              {items?.map(item => (
-                <tr key={item.id}>
-                  <td style={{ fontWeight: 'bold', fontSize: '10px' }}>
-                    {item.kalem_tipi.toUpperCase()}
-                  </td>
-                  <td style={{ textAlign: 'center', fontSize: '10px' }}>{item.adet}</td>
-                  <td style={{ fontSize: '9px' }}>{item.aciklama || '-'}</td>
-                </tr>
+              {groups.map((g, gi) => (
+                <SlipGroup key={gi} group={g} index={gi} />
               ))}
+              {standalone.map(item => <SlipItem key={item.id} item={item} />)}
             </tbody>
           </table>
         </div>
@@ -277,5 +260,33 @@ export default function OrderSlip() {
         </div>
       </div>
     </>
+  );
+}
+
+function SlipGroup({ group, index }) {
+  return (
+    <>
+      <tr style={{ backgroundColor: '#eef2ff' }}>
+        <td colSpan={3} style={{ fontWeight: 'bold', fontSize: '10px' }}>
+          {index + 1}. GÖZLÜK{group.frame?.aciklama ? ` — ${group.frame.aciklama}` : ''}
+        </td>
+      </tr>
+      {group.items.map(item => <SlipItem key={item.id} item={item} nested />)}
+    </>
+  );
+}
+
+function SlipItem({ item, nested }) {
+  return (
+    <tr>
+      <td style={{ fontWeight: 'bold', fontSize: '10px' }}>
+        {nested ? '↳ ' : ''}{kalemLabel(item.kalem_tipi).toUpperCase()}
+      </td>
+      <td style={{ textAlign: 'center', fontSize: '10px' }}>{item.adet}</td>
+      <td style={{ fontSize: '9px' }}>
+        {item.cam_marka && <strong>[{item.cam_marka}] </strong>}
+        {item.aciklama || (item.cam_marka ? '' : '-')}
+      </td>
+    </tr>
   );
 }

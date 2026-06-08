@@ -1,8 +1,12 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Sparkles, ScanLine } from 'lucide-react';
 import db from '../db/database';
+import { generateBarcode } from '../utils/productCode';
+import BarcodeScanner from './BarcodeScanner';
+import { brandsForCategory, modelsForBrand } from '../data/eyewearBrands';
 
 export default function ProductModal({ product, onClose, onSave }) {
+  const [scanning, setScanning] = useState(false);
   const [formData, setFormData] = useState({
     barkod: product?.barkod || '',
     sku: product?.sku || '',
@@ -28,12 +32,31 @@ export default function ProductModal({ product, onClose, onSave }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
+      // Barkod tekrar kontrolü (aynı kod başka üründe varsa uyar)
+      if (formData.barkod && String(formData.barkod).trim()) {
+        const code = String(formData.barkod).trim();
+        const existing = await db.products.where('barkod').equals(code).first();
+        if (existing && existing.id !== product?.id) {
+          alert(`Bu barkod zaten kayıtlı: ${existing.marka} ${existing.model}. Farklı bir kod kullanın.`);
+          return;
+        }
+      }
+
+      // Sayısal alanları string olarak kaydetme (stok hesaplamaları bozulmasın)
+      const payload = {
+        ...formData,
+        alis_fiyati: parseFloat(formData.alis_fiyati) || 0,
+        satis_fiyati: parseFloat(formData.satis_fiyati) || 0,
+        kdv_orani: parseFloat(formData.kdv_orani) || 0,
+        stok_adedi: parseInt(formData.stok_adedi) || 0,
+        min_stok_uyari: parseInt(formData.min_stok_uyari) || 0
+      };
       if (product) {
-        await db.products.update(product.id, formData);
+        await db.products.update(product.id, payload);
       } else {
-        await db.products.add(formData);
+        await db.products.add(payload);
       }
       onSave();
     } catch (error) {
@@ -63,29 +86,63 @@ export default function ProductModal({ product, onClose, onSave }) {
                 <input
                   type="text"
                   required
+                  list="marka-onerileri"
                   value={formData.marka}
                   onChange={(e) => setFormData({ ...formData, marka: e.target.value })}
                   className="input"
+                  placeholder="Yazın veya listeden seçin"
+                  autoComplete="off"
                 />
+                <datalist id="marka-onerileri">
+                  {brandsForCategory(formData.kategori).map(b => <option key={b} value={b} />)}
+                </datalist>
               </div>
               <div>
                 <label className="label">Model *</label>
                 <input
                   type="text"
                   required
+                  list="model-onerileri"
                   value={formData.model}
                   onChange={(e) => setFormData({ ...formData, model: e.target.value })}
                   className="input"
+                  placeholder="Yazın veya listeden seçin"
+                  autoComplete="off"
                 />
+                <datalist id="model-onerileri">
+                  {modelsForBrand(formData.marka).map(m => <option key={m} value={m} />)}
+                </datalist>
               </div>
               <div>
                 <label className="label">Barkod</label>
-                <input
-                  type="text"
-                  value={formData.barkod}
-                  onChange={(e) => setFormData({ ...formData, barkod: e.target.value })}
-                  className="input"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formData.barkod}
+                    onChange={(e) => setFormData({ ...formData, barkod: e.target.value })}
+                    className="input"
+                    placeholder="Ürünün üzerindeki kodu okutun veya yazın"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setScanning(true)}
+                    title="Ürünün üzerindeki QR/barkodu okut"
+                    className="btn-primary px-3 flex items-center gap-1 whitespace-nowrap"
+                  >
+                    <ScanLine className="w-4 h-4" /> Tara
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, barkod: generateBarcode() })}
+                    title="Barkod yoksa otomatik üret"
+                    className="btn-secondary px-3 flex items-center gap-1 whitespace-nowrap"
+                  >
+                    <Sparkles className="w-4 h-4" /> Üret
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Ürünün üzerindeki hazır QR/barkodu "Tara" ile okutup kaydedebilirsiniz.
+                </p>
               </div>
               <div>
                 <label className="label">SKU</label>
@@ -288,6 +345,13 @@ export default function ProductModal({ product, onClose, onSave }) {
           </div>
         </form>
       </div>
+
+      {scanning && (
+        <BarcodeScanner
+          onScan={(code) => { setFormData(prev => ({ ...prev, barkod: code })); setScanning(false); }}
+          onClose={() => setScanning(false)}
+        />
+      )}
     </div>
   );
 }

@@ -11,7 +11,8 @@ export default function Settings() {
     companyPhone: '0XXX XXX XX XX',
     companyAddress: 'Adres Bilgisi',
     companyTaxNo: 'XXXXXXXXXX',
-    companyEmail: 'info@optikpro.com'
+    companyEmail: 'info@optikpro.com',
+    kdvOrani: 20
   });
   const [saving, setSaving] = useState(false);
 
@@ -144,15 +145,33 @@ export default function Settings() {
               />
             </div>
           </div>
-          <div>
-            <label className="label">Vergi No *</label>
-            <input
-              type="text"
-              className="input"
-              value={companyInfo.companyTaxNo}
-              onChange={(e) => setCompanyInfo({ ...companyInfo, companyTaxNo: e.target.value })}
-              placeholder="XXXXXXXXXX"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Vergi No *</label>
+              <input
+                type="text"
+                className="input"
+                value={companyInfo.companyTaxNo}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, companyTaxNo: e.target.value })}
+                placeholder="XXXXXXXXXX"
+              />
+            </div>
+            <div>
+              <label className="label">Varsayılan KDV Oranı (%)</label>
+              <select
+                className="input"
+                value={companyInfo.kdvOrani}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, kdvOrani: parseFloat(e.target.value) })}
+              >
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="8">8</option>
+                <option value="10">10</option>
+                <option value="18">18</option>
+                <option value="20">20</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Yeni siparişlerde uygulanacak KDV oranı.</p>
+            </div>
           </div>
           <button
             onClick={handleSaveCompanyInfo}

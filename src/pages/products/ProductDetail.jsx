@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, Edit, Package } from 'lucide-react';
+import { ArrowLeft, Edit, Package, QrCode } from 'lucide-react';
 import db from '../../db/database';
 import ProductModal from '../../components/ProductModal';
+import QRCodeLabel from '../../components/QRCodeLabel';
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
+  const [showLabel, setShowLabel] = useState(false);
 
   const product = useLiveQuery(() => db.products.get(parseInt(id)));
   const movements = useLiveQuery(() =>
@@ -34,13 +36,22 @@ export default function ProductDetail() {
             <p className="text-gray-600">{product.kategori}</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Edit className="w-5 h-5" />
-          Düzenle
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowLabel(true)}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <QrCode className="w-5 h-5" />
+            QR Etiket
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Edit className="w-5 h-5" />
+            Düzenle
+          </button>
+        </div>
       </div>
 
       {/* Product Info */}
@@ -226,6 +237,10 @@ export default function ProductDetail() {
           onClose={() => setShowModal(false)}
           onSave={() => setShowModal(false)}
         />
+      )}
+
+      {showLabel && (
+        <QRCodeLabel product={product} onClose={() => setShowLabel(false)} />
       )}
     </div>
   );
