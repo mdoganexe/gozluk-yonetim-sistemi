@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { TrendingUp, ShoppingCart, AlertTriangle, Calendar, DollarSign, CalendarClock, Clock, User, Zap } from 'lucide-react';
+import { TrendingUp, ShoppingCart, AlertTriangle, Calendar, DollarSign, CalendarClock, Clock, User, Zap, Sun } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays, startOfDay, endOfDay, addDays, parseISO, isToday } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -128,6 +128,13 @@ export default function Dashboard() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
         <div className="flex items-center gap-4">
+          <Link
+            to="/orders/new?type=gunes&hemen=1"
+            className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-lg font-semibold flex items-center gap-2 shadow-lg shadow-amber-500/30 transition-all"
+          >
+            <Sun className="w-5 h-5" />
+            Hemen Satış (Güneş)
+          </Link>
           <button
             onClick={() => setShowWizard(true)}
             className="bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 shadow-lg shadow-primary-600/30 transition-all"

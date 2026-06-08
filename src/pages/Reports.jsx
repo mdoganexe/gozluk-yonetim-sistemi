@@ -1,11 +1,20 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
-import { Download, Printer, TrendingUp, Percent } from 'lucide-react';
+import {
+  format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+  startOfYear, endOfYear, startOfDay, endOfDay
+} from 'date-fns';
+import { tr } from 'date-fns/locale';
+import { Download, Printer, TrendingUp, Percent, CalendarDays } from 'lucide-react';
 import db from '../db/database';
 
-const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
+const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6'];
+
+const CAT_LABELS = {
+  'çerçeve': 'Çerçeve', 'güneşlik': 'Güneş Gözlüğü', 'aksesuar': 'Aksesuar',
+  cam_stok: 'Optik Cam', cam: 'Cam', 'işçilik': 'İşçilik', 'güneş': 'Güneş Gözlüğü', diger: 'Diğer'
+};
 
 const PAYMENT_LABELS = {
   nakit: 'Nakit',
@@ -21,6 +30,17 @@ export default function Reports() {
     start: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
     end: format(endOfMonth(new Date()), 'yyyy-MM-dd')
   });
+  const [breakdown, setBreakdown] = useState('gunluk'); // gunluk | aylik | yillik
+
+  const setPeriod = (p) => {
+    const now = new Date();
+    const f = (d) => format(d, 'yyyy-MM-dd');
+    if (p === 'bugun') { setDateRange({ start: f(startOfDay(now)), end: f(endOfDay(now)) }); setBreakdown('gunluk'); }
+    else if (p === 'hafta') { setDateRange({ start: f(startOfWeek(now, { weekStartsOn: 1 })), end: f(endOfWeek(now, { weekStartsOn: 1 })) }); setBreakdown('gunluk'); }
+    else if (p === 'ay') { setDateRange({ start: f(startOfMonth(now)), end: f(endOfMonth(now)) }); setBreakdown('gunluk'); }
+    else if (p === 'yil') { setDateRange({ start: f(startOfYear(now)), end: f(endOfYear(now)) }); setBreakdown('aylik'); }
+    else if (p === 'tum') { setDateRange({ start: '2000-01-01', end: f(endOfYear(now)) }); setBreakdown('yillik'); }
+  };
 
   const orders = useLiveQuery(() => db.orders.toArray());
   const products = useLiveQuery(() => db.products.toArray());
@@ -109,6 +129,38 @@ export default function Reports() {
   });
   const statusChartData = Object.entries(statusData).map(([name, value]) => ({ name, value }));
 
+  // Zaman bazlı kırılım (günlük / aylık / yıllık)
+  const seriesMap = {};
+  filteredOrders?.forEach(o => {
+    const d = new Date(o.siparis_tarihi);
+    let key, label;
+    if (breakdown === 'gunluk') { key = format(d, 'yyyy-MM-dd'); label = format(d, 'dd MMM', { locale: tr }); }
+    else if (breakdown === 'aylik') { key = format(d, 'yyyy-MM'); label = format(d, 'MMM yyyy', { locale: tr }); }
+    else { key = format(d, 'yyyy'); label = key; }
+    if (!seriesMap[key]) seriesMap[key] = { key, label, tutar: 0, adet: 0 };
+    seriesMap[key].tutar += o.genel_toplam || 0;
+    seriesMap[key].adet += 1;
+  });
+  const seriesData = Object.values(seriesMap).sort((a, b) => a.key.localeCompare(b.key));
+  const enIyiDonem = [...seriesData].sort((a, b) => b.tutar - a.tutar)[0];
+
+  // Kategori bazlı satış (çerçeve / güneş / lens / aksesuar...)
+  const catMap = {};
+  filteredOrders?.forEach(order => {
+    const items = orderItems?.filter(it => it.siparis_id === order.id) || [];
+    items.forEach(item => {
+      let cat = 'diger';
+      if (item.urun_id) { const p = products?.find(x => x.id === item.urun_id); cat = p?.kategori || 'diger'; }
+      else if (item.kalem_tipi?.startsWith('cam')) cat = 'cam';
+      else if (item.kalem_tipi === 'işçilik') cat = 'işçilik';
+      else if (item.kalem_tipi === 'güneş') cat = 'güneşlik';
+      catMap[cat] = (catMap[cat] || 0) + (item.toplam || 0);
+    });
+  });
+  const categoryData = Object.entries(catMap)
+    .map(([k, v]) => ({ name: CAT_LABELS[k] || k, value: v }))
+    .sort((a, b) => b.value - a.value);
+
   // CSV dışa aktarım (Excel uyumlu, UTF-8 BOM)
   const exportCSV = () => {
     if (!filteredOrders || filteredOrders.length === 0) {
@@ -162,6 +214,16 @@ export default function Reports() {
 
       {/* Date Range */}
       <div className="card no-print">
+        <div className="flex flex-wrap gap-2 mb-4">
+          {[
+            ['bugun', 'Bugün'], ['hafta', 'Bu Hafta'], ['ay', 'Bu Ay'], ['yil', 'Bu Yıl'], ['tum', 'Tüm Zamanlar']
+          ].map(([key, lbl]) => (
+            <button key={key} onClick={() => setPeriod(key)}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-primary-600 hover:text-white transition-colors">
+              {lbl}
+            </button>
+          ))}
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="label">Başlangıç Tarihi</label>
@@ -249,6 +311,107 @@ export default function Reports() {
           <p className="text-sm text-gray-600 mb-1">Net Kâr (Brüt Kâr − Gider)</p>
           <p className={`text-2xl font-bold ${netKar >= 0 ? 'text-green-600' : 'text-red-600'}`}>{tl(netKar)}</p>
         </div>
+      </div>
+
+      {/* Zaman Bazlı Satış (Günlük / Aylık / Yıllık) */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <CalendarDays className="w-5 h-5 text-primary-600" /> Zaman Bazlı Satış
+          </h2>
+          <div className="flex gap-2 no-print">
+            {[['gunluk', 'Günlük'], ['aylik', 'Aylık'], ['yillik', 'Yıllık']].map(([key, lbl]) => (
+              <button key={key} onClick={() => setBreakdown(key)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  breakdown === key ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}>{lbl}</button>
+            ))}
+          </div>
+        </div>
+
+        {seriesData.length === 0 ? (
+          <p className="text-center py-12 text-gray-500">Seçili aralıkta satış yok</p>
+        ) : (
+          <>
+            {enIyiDonem && (
+              <p className="text-sm text-gray-600 mb-3">
+                En yüksek {breakdown === 'gunluk' ? 'gün' : breakdown === 'aylik' ? 'ay' : 'yıl'}:
+                <strong> {enIyiDonem.label}</strong> — {tl(enIyiDonem.tutar)}
+              </p>
+            )}
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={seriesData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="label" angle={seriesData.length > 12 ? -45 : 0} textAnchor={seriesData.length > 12 ? 'end' : 'middle'} height={seriesData.length > 12 ? 70 : 30} />
+                <YAxis />
+                <Tooltip formatter={(v, n) => (n === 'Ciro' ? tl(v) : v)} />
+                <Bar dataKey="tutar" fill="#0ea5e9" name="Ciro" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+
+            <div className="overflow-x-auto mt-4 max-h-72 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-white dark:bg-slate-800">
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700">{breakdown === 'gunluk' ? 'Gün' : breakdown === 'aylik' ? 'Ay' : 'Yıl'}</th>
+                    <th className="text-right py-2 px-3 font-semibold text-gray-700">Sipariş</th>
+                    <th className="text-right py-2 px-3 font-semibold text-gray-700">Ciro</th>
+                    <th className="text-right py-2 px-3 font-semibold text-gray-700">Ort. Sepet</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...seriesData].reverse().map(s => (
+                    <tr key={s.key} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-2 px-3 font-medium">{s.label}</td>
+                      <td className="py-2 px-3 text-right">{s.adet}</td>
+                      <td className="py-2 px-3 text-right font-medium">{tl(s.tutar)}</td>
+                      <td className="py-2 px-3 text-right text-gray-600">{tl(s.adet ? s.tutar / s.adet : 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300 font-bold">
+                    <td className="py-2 px-3">Toplam</td>
+                    <td className="py-2 px-3 text-right">{totalOrders}</td>
+                    <td className="py-2 px-3 text-right text-primary-600">{tl(totalSales)}</td>
+                    <td className="py-2 px-3 text-right">{tl(avgOrderValue)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Kategori Bazlı Satış */}
+      <div className="card">
+        <h2 className="text-xl font-semibold mb-4">Kategori Bazlı Satış</h2>
+        {categoryData.length === 0 ? (
+          <p className="text-center py-8 text-gray-500">Veri yok</p>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-center">
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie data={categoryData} cx="50%" cy="50%" labelLine={false}
+                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`} outerRadius={80} dataKey="value">
+                  {categoryData.map((entry, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip formatter={(v) => tl(v)} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="space-y-1">
+              {categoryData.map((c, i) => (
+                <div key={c.name} className="flex justify-between text-sm py-1 border-b border-gray-100">
+                  <span className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                    {c.name}
+                  </span>
+                  <span className="font-medium">{tl(c.value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Ödeme Türü Kırılımı */}

@@ -39,6 +39,7 @@ export default function OrderNew() {
   const [uploadingImg, setUploadingImg] = useState(false);
   const [items, setItems] = useState([]);
   const [kdvUygula, setKdvUygula] = useState(true);
+  const [hemenTeslim, setHemenTeslim] = useState(false);
   const [payments, setPayments] = useState([]);
   const [orderData, setOrderData] = useState({
     siparis_tarihi: new Date().toISOString().split('T')[0],
@@ -103,10 +104,12 @@ export default function OrderNew() {
       ]);
     }
     if (type === 'gunes' && !prefilledRef.current) {
-      // Güneş gözlüğü: tek kalem, reçete gerekmez
+      // Güneş gözlüğü: tek kalem, reçete gerekmez, genelde anında teslim
       prefilledRef.current = true;
       setItems([newItem('güneş', null)]);
+      setHemenTeslim(true);
     }
+    if (searchParams.get('hemen') === '1') setHemenTeslim(true);
     if (type === 'gozluk' && !prefilledRef.current) {
       // Gözlük satışı: çerçeve + cam seti hazır gelsin (reçete dropdown'dan seçilir)
       prefilledRef.current = true;
@@ -210,6 +213,15 @@ export default function OrderNew() {
   const removePayment = (id) => setPayments(prev => prev.filter(p => p.id !== id));
   const patchPayment = (id, patch) => setPayments(prev => prev.map(p => (p.id === id ? { ...p, ...patch } : p)));
   const fillFullCash = () => setPayments([{ id: uid(), odeme_turu: 'nakit', tutar: totals.genel_toplam.toFixed(2) }]);
+  const toggleHemenTeslim = () => {
+    setHemenTeslim(v => {
+      const nv = !v;
+      if (nv && payments.length === 0 && totals.genel_toplam > 0) {
+        setPayments([{ id: uid(), odeme_turu: 'nakit', tutar: totals.genel_toplam.toFixed(2) }]);
+      }
+      return nv;
+    });
+  };
   const odenenToplam = payments.reduce((s, p) => s + (parseFloat(p.tutar) || 0), 0);
 
   // Yeni reçete kaydedilince en yenisini otomatik seç
@@ -270,7 +282,7 @@ export default function OrderNew() {
         recete_id: selectedPrescription?.id || null,
         recete_snapshot: selectedPrescription || null, // reçete mirası (anlık kopya)
         gorseller: orderImages, // siparişe eklenen görseller (reçete kâğıdı/ürün fotoğrafı)
-        durum: 'onaylandi',
+        durum: hemenTeslim ? 'teslim_edildi' : 'onaylandi',
         siparis_tarihi: siparisTarihiISO(),
         teslim_beklenen: orderData.teslim_beklenen,
         ara_toplam: totals.ara_toplam,
@@ -732,9 +744,25 @@ export default function OrderNew() {
           )}
         </div>
 
+        {/* Hemen Teslim */}
+        <div className={`card border-2 ${hemenTeslim ? 'border-green-400 bg-green-50 dark:bg-slate-800' : 'border-gray-200'}`}>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" checked={hemenTeslim} onChange={toggleHemenTeslim} className="w-5 h-5" />
+            <div>
+              <span className="font-semibold">Hemen Teslim Et (anında satış)</span>
+              <p className="text-sm text-gray-600">
+                Güneş gözlüğü/perakende gibi anında satışlar için. Sipariş <strong>Teslim Edildi</strong> olarak
+                kaydedilir, tahsilat tam nakit ön-doldurulur (değiştirebilirsiniz). Laboratuvar/üretim beklemez.
+              </p>
+            </div>
+          </label>
+        </div>
+
         {/* Actions */}
         <div className="flex gap-3">
-          <button type="submit" className="btn-primary flex-1">Siparişi Oluştur</button>
+          <button type="submit" className="btn-primary flex-1">
+            {hemenTeslim ? 'Sat ve Teslim Et' : 'Siparişi Oluştur'}
+          </button>
           <button type="button" onClick={() => navigate('/orders')} className="btn-secondary flex-1">İptal</button>
         </div>
       </form>
