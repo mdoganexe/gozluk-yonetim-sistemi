@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { X, Upload, Image as ImageIcon, Trash2, Eye, Glasses } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Trash2, Eye, Glasses, ClipboardPaste } from 'lucide-react';
 import db from '../db/database';
 import { CONTACT_LENS_BRANDS } from '../data/eyewearBrands';
 import { fileToCompressedDataUrl } from '../utils/image';
+import { usePasteImages, readClipboardImages } from '../utils/usePasteImages';
 import { useImageViewer } from './ImageViewer';
 import { PRESCRIPTION_USAGE } from '../utils/prescription';
 
@@ -59,6 +60,15 @@ export default function PrescriptionModal({ customerId, prescription, initialTyp
   };
 
   const removeImage = (idx) => setGorseller(prev => prev.filter((_, i) => i !== idx));
+
+  usePasteImages((imgs) => setGorseller(prev => [...prev, ...imgs]));
+  const handlePasteBtn = async () => {
+    try {
+      const imgs = await readClipboardImages();
+      if (imgs.length) setGorseller(prev => [...prev, ...imgs]);
+      else alert('Panoda resim yok. Bir resmi kopyalayıp tekrar deneyin (veya Ctrl+V).');
+    } catch (e) { alert(e.message); }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -236,14 +246,19 @@ export default function PrescriptionModal({ customerId, prescription, initialTyp
               <h3 className="font-semibold text-lg flex items-center gap-2">
                 <ImageIcon className="w-5 h-5 text-gray-600" /> Reçete Görselleri
               </h3>
-              <label className="btn-secondary text-sm flex items-center gap-2 cursor-pointer">
-                <Upload className="w-4 h-4" />
-                {uploading ? 'Yükleniyor...' : 'Görsel Ekle'}
-                <input type="file" accept="image/*" multiple onChange={handleImageUpload} disabled={uploading} className="hidden" />
-              </label>
+              <div className="flex gap-2">
+                <button type="button" onClick={handlePasteBtn} className="btn-secondary text-sm flex items-center gap-2">
+                  <ClipboardPaste className="w-4 h-4" /> Yapıştır
+                </button>
+                <label className="btn-secondary text-sm flex items-center gap-2 cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  {uploading ? 'Yükleniyor...' : 'Görsel Ekle'}
+                  <input type="file" accept="image/*" multiple onChange={handleImageUpload} disabled={uploading} className="hidden" />
+                </label>
+              </div>
             </div>
             <p className="text-xs text-gray-500 mb-3">
-              Bilgisayardaki bir fotoğrafı veya tarayıcıdan taranmış reçete görselini ekleyebilirsiniz.
+              Dosyadan ekleyebilir, tarayıcı görselini koyabilir veya <strong>Ctrl+V</strong> ile panodan yapıştırabilirsiniz.
             </p>
             {gorseller.length > 0 ? (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">

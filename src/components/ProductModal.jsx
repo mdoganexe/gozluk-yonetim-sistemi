@@ -3,8 +3,10 @@ import { X, Sparkles, ScanLine, Upload, Image as ImageIcon, Trash2 } from 'lucid
 import db from '../db/database';
 import { generateBarcode } from '../utils/productCode';
 import { filesToImages } from '../utils/image';
+import { usePasteImages, readClipboardImages } from '../utils/usePasteImages';
 import BarcodeScanner from './BarcodeScanner';
 import { useImageViewer } from './ImageViewer';
+import { ClipboardPaste } from 'lucide-react';
 import { brandsForCategory, modelsForBrand } from '../data/eyewearBrands';
 
 export default function ProductModal({ product, onClose, onSave }) {
@@ -51,6 +53,15 @@ export default function ProductModal({ product, onClose, onSave }) {
   };
 
   const removeImage = (idx) => setGorseller(prev => prev.filter((_, i) => i !== idx));
+
+  usePasteImages((imgs) => setGorseller(prev => [...prev, ...imgs]), { maxSize: 1000, quality: 0.75 });
+  const handlePasteBtn = async () => {
+    try {
+      const imgs = await readClipboardImages(1000, 0.75);
+      if (imgs.length) setGorseller(prev => [...prev, ...imgs]);
+      else alert('Panoda resim yok. Bir resmi kopyalayıp tekrar deneyin (veya Ctrl+V).');
+    } catch (e) { alert(e.message); }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -340,13 +351,19 @@ export default function ProductModal({ product, onClose, onSave }) {
               <h3 className="font-semibold text-lg flex items-center gap-2">
                 <ImageIcon className="w-5 h-5 text-gray-600" /> Ürün Fotoğrafları
               </h3>
-              <label className="btn-secondary text-sm flex items-center gap-2 cursor-pointer">
-                <Upload className="w-4 h-4" />
-                {uploading ? 'Yükleniyor...' : 'Fotoğraf Ekle'}
-                <input type="file" accept="image/*" multiple capture="environment"
-                  onChange={handleImageUpload} disabled={uploading} className="hidden" />
-              </label>
+              <div className="flex gap-2">
+                <button type="button" onClick={handlePasteBtn} className="btn-secondary text-sm flex items-center gap-2">
+                  <ClipboardPaste className="w-4 h-4" /> Yapıştır
+                </button>
+                <label className="btn-secondary text-sm flex items-center gap-2 cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  {uploading ? 'Yükleniyor...' : 'Fotoğraf Ekle'}
+                  <input type="file" accept="image/*" multiple capture="environment"
+                    onChange={handleImageUpload} disabled={uploading} className="hidden" />
+                </label>
+              </div>
             </div>
+            <p className="text-xs text-gray-500 mb-2">Dosyadan ekleyebilir, telefondan çekebilir veya <strong>Ctrl+V</strong> ile yapıştırabilirsiniz.</p>
             {gorseller.length > 0 ? (
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                 {gorseller.map((g, idx) => (

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, Plus, Trash2, User, Glasses, AlertTriangle, Eye, Wrench, Package, Sun, Image as ImageIcon, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, User, Glasses, AlertTriangle, Eye, Wrench, Package, Sun, Image as ImageIcon, Upload, ClipboardPaste } from 'lucide-react';
 import db, { generateFisNo } from '../../db/database';
 import { decreaseStockForOrder, checkStockAvailability } from '../../utils/stockManager';
 import { useSettings } from '../../utils/useSettings';
@@ -10,6 +10,7 @@ import CustomerPicker from '../../components/CustomerPicker';
 import PrescriptionModal from '../../components/PrescriptionModal';
 import { useImageViewer } from '../../components/ImageViewer';
 import { filesToImages } from '../../utils/image';
+import { usePasteImages, readClipboardImages } from '../../utils/usePasteImages';
 import { LENS_BRANDS } from '../../data/eyewearBrands';
 import { usageLabel } from '../../utils/prescription';
 
@@ -226,6 +227,16 @@ export default function OrderNew() {
     finally { setUploadingImg(false); e.target.value = ''; }
   };
   const removeOrderImage = (idx) => setOrderImages(prev => prev.filter((_, i) => i !== idx));
+
+  // Ctrl+V yapıştırma (reçete modalı açıkken devre dışı; o zaman görsel modala gider)
+  usePasteImages((imgs) => setOrderImages(prev => [...prev, ...imgs]), { enabled: !showPrescriptionModal });
+  const handlePasteOrderImg = async () => {
+    try {
+      const imgs = await readClipboardImages();
+      if (imgs.length) setOrderImages(prev => [...prev, ...imgs]);
+      else alert('Panoda resim yok. Bir resmi kopyalayıp tekrar deneyin (veya Ctrl+V).');
+    } catch (e) { alert(e.message); }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -507,13 +518,19 @@ export default function OrderNew() {
                 <label className="label mb-0 flex items-center gap-2">
                   <ImageIcon className="w-4 h-4" /> Görseller (reçete kâğıdı / fotoğraf)
                 </label>
-                <label className="btn-secondary text-sm flex items-center gap-2 cursor-pointer">
-                  <Upload className="w-4 h-4" />
-                  {uploadingImg ? 'Yükleniyor...' : 'Görsel Ekle'}
-                  <input type="file" accept="image/*" multiple capture="environment"
-                    onChange={handleOrderImageUpload} disabled={uploadingImg} className="hidden" />
-                </label>
+                <div className="flex gap-2">
+                  <button type="button" onClick={handlePasteOrderImg} className="btn-secondary text-sm flex items-center gap-2">
+                    <ClipboardPaste className="w-4 h-4" /> Yapıştır
+                  </button>
+                  <label className="btn-secondary text-sm flex items-center gap-2 cursor-pointer">
+                    <Upload className="w-4 h-4" />
+                    {uploadingImg ? 'Yükleniyor...' : 'Görsel Ekle'}
+                    <input type="file" accept="image/*" multiple capture="environment"
+                      onChange={handleOrderImageUpload} disabled={uploadingImg} className="hidden" />
+                  </label>
+                </div>
               </div>
+              <p className="text-xs text-gray-500 mb-2">Dosyadan, kameradan veya <strong>Ctrl+V</strong> ile panodan ekleyebilirsiniz.</p>
               {orderImages.length > 0 && (
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                   {orderImages.map((g, idx) => (
