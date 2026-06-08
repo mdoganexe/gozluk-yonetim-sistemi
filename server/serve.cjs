@@ -154,7 +154,15 @@ const server = http.createServer(async (req, res) => {
     }
     const ext = path.extname(filePath).toLowerCase();
     const data = fs.readFileSync(filePath);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' };
+    // HTML asla önbelleğe alınmasın (güncelleme sonrası eski sürüm yüklenmesin);
+    // hash'li asset'ler uzun süre önbelleklenebilir.
+    if (ext === '.html') {
+      headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    } else if (filePath.includes(path.sep + 'assets' + path.sep)) {
+      headers['Cache-Control'] = 'public, max-age=31536000, immutable';
+    }
+    res.writeHead(200, headers);
     res.end(data);
   } catch (e) {
     res.writeHead(500); res.end('Sunucu hatası: ' + e.message);

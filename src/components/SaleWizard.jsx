@@ -324,9 +324,9 @@ export default function SaleWizard({ onClose }) {
     <div key={side} className="grid grid-cols-5 gap-2 items-end">
       <div className="font-semibold text-sm pb-2">{label}</div>
       <div><label className="label">{presTip === 'lens' ? 'SPH' : 'Sfera'}</label>
-        <input type="number" step="0.25" value={presData[`${side}_sfera`]} onChange={(e) => setPresData({ ...presData, [`${side}_sfera`]: e.target.value })} className="input" /></div>
+        <input type="text" inputMode="decimal" value={presData[`${side}_sfera`]} onChange={(e) => setPresData({ ...presData, [`${side}_sfera`]: e.target.value })} className="input" placeholder="+/-" /></div>
       <div><label className="label">{presTip === 'lens' ? 'CYL' : 'Sil.'}</label>
-        <input type="number" step="0.25" value={presData[`${side}_silindir`]} onChange={(e) => setPresData({ ...presData, [`${side}_silindir`]: e.target.value })} className="input" /></div>
+        <input type="text" inputMode="decimal" value={presData[`${side}_silindir`]} onChange={(e) => setPresData({ ...presData, [`${side}_silindir`]: e.target.value })} className="input" placeholder="+/-" /></div>
       <div><label className="label">{presTip === 'lens' ? 'AXIS' : 'Aks'}</label>
         <input type="number" value={presData[`${side}_aks`]} onChange={(e) => setPresData({ ...presData, [`${side}_aks`]: e.target.value })} className="input" /></div>
       <div><label className="label">{presTip === 'lens' ? 'DIA' : 'PD'}</label>

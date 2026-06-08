@@ -88,13 +88,13 @@ export default function PrescriptionModal({ customerId, prescription, initialTyp
       <div className={`grid ${isLens ? 'grid-cols-5' : 'grid-cols-4'} gap-3`}>
         <div>
           <label className="label">{isLens ? 'SPH (Numara)' : 'Sfera'}</label>
-          <input type="number" step="0.25" value={formData[`${side}_sfera`]}
-            onChange={(e) => set(`${side}_sfera`, e.target.value)} className="input" placeholder="+/-" />
+          <input type="text" inputMode="decimal" value={formData[`${side}_sfera`]}
+            onChange={(e) => set(`${side}_sfera`, e.target.value)} className="input" placeholder="+/- (ör. +4.00)" />
         </div>
         <div>
           <label className="label">{isLens ? 'CYL' : 'Silindir'}</label>
-          <input type="number" step="0.25" value={formData[`${side}_silindir`]}
-            onChange={(e) => set(`${side}_silindir`, e.target.value)} className="input" />
+          <input type="text" inputMode="decimal" value={formData[`${side}_silindir`]}
+            onChange={(e) => set(`${side}_silindir`, e.target.value)} className="input" placeholder="+/- (ör. -1.00)" />
         </div>
         <div>
           <label className="label">{isLens ? 'AXIS' : 'Aks (0-180)'}</label>
@@ -117,8 +117,8 @@ export default function PrescriptionModal({ customerId, prescription, initialTyp
         ) : (
           <div>
             <label className="label">Add</label>
-            <input type="number" step="0.25" value={formData[`${side}_add`]}
-              onChange={(e) => set(`${side}_add`, e.target.value)} className="input" />
+            <input type="text" inputMode="decimal" value={formData[`${side}_add`]}
+              onChange={(e) => set(`${side}_add`, e.target.value)} className="input" placeholder="+ (ör. +2.00)" />
           </div>
         )}
       </div>
