@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowLeft, Printer } from 'lucide-react';
 import db from '../../db/database';
 import { groupOrderItems, kalemLabel, prescriptionOf } from '../../utils/orderHelpers';
+import { usageLabel } from '../../utils/prescription';
 
 export default function OrderSlip() {
   const { id } = useParams();
@@ -158,7 +159,7 @@ export default function OrderSlip() {
         {prescription && (
           <div className="print-section" style={{ border: '2px solid #000', padding: '8px', marginTop: '12px' }}>
             <div className="print-section-title" style={{ fontSize: '12px', marginBottom: '8px' }}>
-              {isLens ? 'LENS REÇETESİ' : 'REÇETE BİLGİLERİ'}{prescription.lens_marka ? ` — ${prescription.lens_marka}` : ''}
+              {isLens ? 'LENS REÇETESİ' : 'REÇETE BİLGİLERİ'} — {usageLabel(prescription.kullanim || 'uzak')}{prescription.lens_marka ? ` · ${prescription.lens_marka}` : ''}
             </div>
             {(() => {
               const cols = isLens

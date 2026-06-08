@@ -7,6 +7,7 @@ import PaymentModal from '../../components/PaymentModal';
 import { restoreStockForOrder } from '../../utils/stockManager';
 import { groupOrderItems, kalemLabel, prescriptionOf } from '../../utils/orderHelpers';
 import { useImageViewer } from '../../components/ImageViewer';
+import { usageLabel } from '../../utils/prescription';
 
 const statusColors = {
   taslak: 'bg-gray-100 text-gray-700',
@@ -171,7 +172,7 @@ export default function OrderDetail() {
         {prescription && (
           <div style={{ marginBottom: '12px', border: '2px solid #333', padding: '6px', borderRadius: '3px', backgroundColor: '#f9f9f9' }}>
             <div style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '4px', textAlign: 'center' }}>
-              {isLens ? 'LENS REÇETESİ' : 'REÇETE BİLGİLERİ'}{prescription.lens_marka ? ` — ${prescription.lens_marka}` : ''}
+              {isLens ? 'LENS REÇETESİ' : 'REÇETE BİLGİLERİ'} — {usageLabel(prescription.kullanim || 'uzak')}{prescription.lens_marka ? ` · ${prescription.lens_marka}` : ''}
             </div>
             <PrescriptionTable print />
           </div>
@@ -302,6 +303,9 @@ export default function OrderDetail() {
               Reçete Bilgileri
               <span className={`px-2 py-0.5 text-xs rounded-full ${isLens ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                 {isLens ? 'Lens' : 'Optik'}
+              </span>
+              <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">
+                {usageLabel(prescription.kullanim || 'uzak')}
               </span>
               {prescription.lens_marka && <span className="text-sm font-normal text-gray-600">· {prescription.lens_marka}</span>}
             </h2>

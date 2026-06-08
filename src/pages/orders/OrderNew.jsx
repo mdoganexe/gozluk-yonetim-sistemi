@@ -8,6 +8,7 @@ import { useSettings } from '../../utils/useSettings';
 import ProductPicker from '../../components/ProductPicker';
 import CustomerPicker from '../../components/CustomerPicker';
 import { LENS_BRANDS } from '../../data/eyewearBrands';
+import { usageLabel } from '../../utils/prescription';
 
 const PAYMENT_LABELS = {
   nakit: '💵 Nakit',
@@ -424,7 +425,7 @@ export default function OrderNew() {
                   <option value="">Reçete seçin (opsiyonel)...</option>
                   {prescriptions.map(p => (
                     <option key={p.id} value={p.id}>
-                      {new Date(p.tarih).toLocaleDateString('tr-TR')} · {p.recete_tipi === 'lens' ? 'Lens' : 'Optik'}{p.aktif ? ' (Aktif)' : ''}
+                      {new Date(p.tarih).toLocaleDateString('tr-TR')} · {p.recete_tipi === 'lens' ? 'Lens' : 'Optik'} · {usageLabel(p.kullanim || 'uzak')}{p.aktif ? ' (Aktif)' : ''}
                     </option>
                   ))}
                 </select>
@@ -436,7 +437,7 @@ export default function OrderNew() {
               <div className="p-3 bg-primary-50 dark:bg-slate-700 rounded-lg text-sm">
                 <p className="font-medium mb-1 flex items-center gap-2">
                   {selectedPrescription.recete_tipi === 'lens' ? <Eye className="w-4 h-4" /> : <Glasses className="w-4 h-4" />}
-                  Reçete {new Date(selectedPrescription.tarih).toLocaleDateString('tr-TR')}
+                  Reçete {new Date(selectedPrescription.tarih).toLocaleDateString('tr-TR')} · {usageLabel(selectedPrescription.kullanim || 'uzak')}
                   {selectedPrescription.lens_marka && ` · ${selectedPrescription.lens_marka}`}
                 </p>
                 <div className="grid grid-cols-2 gap-3 font-mono text-xs">

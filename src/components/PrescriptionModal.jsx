@@ -4,10 +4,12 @@ import db from '../db/database';
 import { CONTACT_LENS_BRANDS } from '../data/eyewearBrands';
 import { fileToCompressedDataUrl } from '../utils/image';
 import { useImageViewer } from './ImageViewer';
+import { PRESCRIPTION_USAGE } from '../utils/prescription';
 
 export default function PrescriptionModal({ customerId, prescription, initialType, onClose, onSave }) {
   const { openImages } = useImageViewer();
   const [tip, setTip] = useState(prescription?.recete_tipi || initialType || 'optik');
+  const [kullanim, setKullanim] = useState(prescription?.kullanim || 'uzak');
   const [uploading, setUploading] = useState(false);
   const [gorseller, setGorseller] = useState(prescription?.gorseller || []);
   const [formData, setFormData] = useState({
@@ -61,10 +63,14 @@ export default function PrescriptionModal({ customerId, prescription, initialTyp
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const payload = { ...formData, recete_tipi: tip, gorseller };
+      const payload = { ...formData, recete_tipi: tip, kullanim, gorseller };
 
+      // Aktif yapılıyorsa, AYNI kullanım türündeki (ör. uzak) diğer reçeteleri pasifleştir.
+      // Böylece bir kişide aynı anda aktif "uzak" ve aktif "yakın" reçete olabilir.
       if (formData.aktif) {
-        await db.prescriptions.where('musteri_id').equals(customerId).modify({ aktif: false });
+        await db.prescriptions.where('musteri_id').equals(customerId)
+          .and(p => (p.kullanim || 'uzak') === kullanim)
+          .modify({ aktif: false });
       }
       if (prescription) {
         await db.prescriptions.update(prescription.id, payload);
@@ -155,6 +161,22 @@ export default function PrescriptionModal({ customerId, prescription, initialTyp
                 <Eye className="w-5 h-5" /> Lens (Kontakt) Reçetesi
               </button>
             </div>
+          </div>
+
+          {/* Kullanım Türü (uzak/yakın/progresif...) */}
+          <div>
+            <label className="label">Kullanım Türü (Bu reçete hangi gözlük için?)</label>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(PRESCRIPTION_USAGE).map(([key, lbl]) => (
+                <button key={key} type="button" onClick={() => setKullanim(key)}
+                  className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                    kullanim === key ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-gray-200 text-gray-600 hover:border-primary-300'
+                  }`}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Aynı kişide her tür için ayrı aktif reçete (gözlük) tutulabilir.</p>
           </div>
 
           {/* Genel Bilgiler */}

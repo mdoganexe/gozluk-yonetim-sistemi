@@ -11,6 +11,7 @@ import { useSettings } from '../utils/useSettings';
 import ProductPicker from './ProductPicker';
 import CustomerPicker from './CustomerPicker';
 import { CONTACT_LENS_BRANDS, LENS_BRANDS } from '../data/eyewearBrands';
+import { PRESCRIPTION_USAGE } from '../utils/prescription';
 
 const tl = (v) => `₺${(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
 const PAYMENT_LABELS = { nakit: '💵 Nakit', kredi_karti: '💳 Kredi Kartı', havale: '🏦 Havale/EFT', veresiye: '📝 Veresiye' };
@@ -44,6 +45,7 @@ export default function SaleWizard({ onClose }) {
   const [presMode, setPresMode] = useState('none'); // 'none' | 'existing' | 'new'
   const [existingPresId, setExistingPresId] = useState('');
   const [presTip, setPresTip] = useState('optik');
+  const [presKullanim, setPresKullanim] = useState('uzak');
   const [presData, setPresData] = useState({
     sag_sfera: '', sag_silindir: '', sag_aks: '', sag_bc: '', sag_dia: '',
     sol_sfera: '', sol_silindir: '', sol_aks: '', sol_bc: '', sol_dia: '',
@@ -191,10 +193,13 @@ export default function SaleWizard({ onClose }) {
         receteId = parseInt(existingPresId);
         receteSnapshot = existingPrescriptions?.find(p => p.id === receteId) || null;
       } else if (presMode === 'new') {
-        await db.prescriptions.where('musteri_id').equals(customerId).modify({ aktif: false });
+        await db.prescriptions.where('musteri_id').equals(customerId)
+          .and(p => (p.kullanim || 'uzak') === presKullanim)
+          .modify({ aktif: false });
         const presPayload = {
           musteri_id: customerId,
           recete_tipi: presTip,
+          kullanim: presKullanim,
           tarih: new Date().toISOString().split('T')[0],
           aktif: true,
           gorseller: [],
@@ -458,6 +463,17 @@ export default function SaleWizard({ onClose }) {
                       <div className="grid grid-cols-2 gap-3">
                         <button type="button" onClick={() => setPresTip('optik')} className={`p-2 rounded-lg border-2 text-sm font-medium ${presTip === 'optik' ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-gray-200'}`}>Optik (Gözlük)</button>
                         <button type="button" onClick={() => setPresTip('lens')} className={`p-2 rounded-lg border-2 text-sm font-medium ${presTip === 'lens' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200'}`}>Lens (Kontakt)</button>
+                      </div>
+                      <div>
+                        <label className="label">Kullanım Türü</label>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(PRESCRIPTION_USAGE).map(([key, lbl]) => (
+                            <button key={key} type="button" onClick={() => setPresKullanim(key)}
+                              className={`px-3 py-1.5 rounded-lg border-2 text-sm font-medium ${presKullanim === key ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-gray-200 text-gray-600'}`}>
+                              {lbl}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       {presTip === 'lens' && (
                         <div><label className="label">Lens Markası</label>

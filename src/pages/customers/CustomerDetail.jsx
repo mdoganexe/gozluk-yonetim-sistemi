@@ -7,6 +7,7 @@ import CustomerModal from '../../components/CustomerModal';
 import PrescriptionModal from '../../components/PrescriptionModal';
 import AppointmentModal from '../../components/AppointmentModal';
 import { useImageViewer } from '../../components/ImageViewer';
+import { usageLabel } from '../../utils/prescription';
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -244,6 +245,9 @@ export default function CustomerDetail() {
                       </span>
                       <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${isLens ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                         {isLens ? 'Lens' : 'Optik'}
+                      </span>
+                      <span className="px-2 py-0.5 text-xs rounded-full font-medium bg-purple-100 text-purple-700">
+                        {usageLabel(prescription.kullanim || 'uzak')}
                       </span>
                       {prescription.aktif && (
                         <span className="px-2 py-0.5 bg-primary-600 text-white text-xs rounded-full">Aktif</span>
